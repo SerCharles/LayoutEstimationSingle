@@ -14,7 +14,7 @@ from torch.autograd import Variable
 from torch.nn.utils import clip_grad_norm
 
 from data.dataset import *
-from model.dorn import * 
+from models.dorn import * 
 from train_valid_utils import *
 from utils.utils import *
 from utils.metrics import *
@@ -58,29 +58,30 @@ def train(args, device, train_loader, model, optimizer, epoch):
     '''
     model.train()
     average_meter = AverageMeter()
-    for i, (image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
+    #for i, (image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
+    for i, (image, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
 
         start = time.time()
         if device:
             image = image.cuda()
-            layout_depth = layout_depth.cuda()
-            layout_seg = layout_seg.cuda()
+            #layout_depth = layout_depth.cuda()
+            #layout_seg = layout_seg.cuda()
             normal = normal.cuda()
             intrinsic = intrinsic.cuda()
             mesh_x = mesh_x.cuda() 
             mesh_y = mesh_y.cuda()
         
         batch_size = image.size(0)
-        the_input = torch.concat((image, mesh_x, mesh_y), dim = 0)
+        the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
         optimizer.zero_grad()
         output = model(the_input)
-        output = normalize(output)
-        normal = normalize(normal)
+        output = normalize(output, args.epsilon)
         output_plain = output.view(batch_size, -1)
         normal_plain = normal.view(batch_size, -1)
-        loss = torch.mean(torch.sum((output_plain - normal_plain) ** 2, dim = 1))
-        mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(output, normal)
-        average_meter.add_batch(batch_size, loss.item(), mean, median, rmse, d_1125, d_2250, d_30)
+        loss = torch.sum((output_plain - normal_plain) ** 2)
+        mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(output, normal, args.epsilon)
+        the_avg_loss = loss.item() / (batch_size * output_plain.size(1))
+        average_meter.add_batch(batch_size, the_avg_loss, mean, median, rmse, d_1125, d_2250, d_30)
 
         loss.backward()
         optimizer.step()
@@ -89,17 +90,20 @@ def train(args, device, train_loader, model, optimizer, epoch):
         the_time = end - start
 
         result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s, Loss {:.4f}\n' \
-            .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss.item()) + \
+            .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, the_avg_loss) + \
             'mean: {:.4f}, median: {:.4f}, rmse: {:.4f}, 11.25: {:.3f}, 22.50: {:.3f}, 30: {:.3f}' \
             .format(mean, median, rmse, d_1125, d_2250, d_30)
+        
         print(result_string)
         write_log(args, epoch, i, 'training', result_string)
+    
     
     avg_loss, avg_mean, avg_median, avg_rmse, avg_1125, avg_2250, avg_30 = average_meter.get_average()
     result_string = 'Average: Epoch: [{} / {}], Loss {:.4f}, mean: {:.4f}, median: {:.4f}, rmse: {:.4f}, 11.25: {:.3f}, 22.50: {:.3f}, 30: {:.3f}' \
         .format(epoch + 1, args.epochs, avg_loss, avg_mean, avg_median, avg_rmse, avg_1125, avg_2250, avg_30)
     print(result_string)
     write_log(args, epoch, 1, 'training', result_string)
+    
     return model
  
 
@@ -112,13 +116,15 @@ def valid(args, device, valid_loader, model, epoch):
     '''
     model.eval()
     average_meter = AverageMeter()
-    for i, (image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
+    #for i, (image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
+    for i, (image, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
+
         start = time.time()
 
         if device:
             image = image.cuda()
-            layout_depth = layout_depth.cuda()
-            layout_seg = layout_seg.cuda()
+            #layout_depth = layout_depth.cuda()
+            #layout_seg = layout_seg.cuda()
             normal = normal.cuda()
             intrinsic = intrinsic.cuda()
             mesh_x = mesh_x.cuda() 
@@ -126,20 +132,21 @@ def valid(args, device, valid_loader, model, epoch):
 
         with torch.no_grad():
             batch_size = image.size(0)
-            the_input = torch.concat((image, mesh_x, mesh_y), dim = 0)
+            the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
             output = model(the_input)
+            output = normalize(output, args.epsilon)
             output_plain = output.view(batch_size, -1)
             normal_plain = normal.view(batch_size, -1)
-            loss = torch.mean(torch.sum((output_plain - normal_plain) ** 2, dim = 1))
-            mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(output, normal)
-            average_meter.add_batch(batch_size, loss.item(), mean, median, rmse, d_1125, d_2250, d_30)
-
+            loss = torch.sum((output_plain - normal_plain) ** 2)
+            mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(output, normal, args.epsilon)
+            the_avg_loss = loss.item() / (batch_size * output_plain.size(1))
+            average_meter.add_batch(batch_size, the_avg_loss, mean, median, rmse, d_1125, d_2250, d_30)
 
         end = time.time()
         the_time = end - start
 
         result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s, Loss {:.4f}\n' \
-            .format(epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss.item()) + \
+            .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time, the_avg_loss) + \
             'mean: {:.4f}, median: {:.4f}, rmse: {:.4f}, 11.25: {:.3f}, 22.50: {:.3f}, 30: {:.3f}' \
             .format(mean, median, rmse, d_1125, d_2250, d_30)
         write_log(args, epoch, i, 'validation', result_string)

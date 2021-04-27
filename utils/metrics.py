@@ -41,14 +41,15 @@ def depth_metrics(depth_map, depth_map_gt):
 
     return rms, rel, rlog10, rate_1, rate_2, rate_3
 
-def norm_metrics(norm, norm_gt):
+def norm_metrics(norm, norm_gt, epsilon):
     '''
     description: get the norm metrics of the got norm and the ground truth norm
-    parameter: norm mine and the ground truth
+    parameter: norm mine and the ground truth, epsilon
     return: several metrics, mean, median, rmse, 11.25, 22.5, 30
     '''
     dot_product = torch.sum(norm * norm_gt, dim = 1)
-    errors = torch.acos(dot_product) / np.pi * 180
+    dot = torch.clamp(dot_product, min = -1.0, max = 1.0)
+    errors = torch.acos(dot) / np.pi * 180
 
     mean = float(torch.mean(errors))
     median = float(torch.median(errors))
@@ -59,8 +60,8 @@ def norm_metrics(norm, norm_gt):
     error_square_avg = torch.mean(error_square, 1)
     rmse = float(torch.mean(torch.sqrt(error_square_avg)))
 
-    delta_1 = float(torch.sum(errors < 11.25) / total_size)
-    delta_2 = float(torch.sum(errors < 22.5) / total_size)
-    delta_3 = float(torch.sum(errors < 30) / total_size)
+    delta_1 = float((errors < 11.25).float().mean())
+    delta_2 = float((errors < 22.5).float().mean())
+    delta_3 = float((errors < 30).float().mean())
 
     return mean, median, rmse, delta_1, delta_2, delta_3

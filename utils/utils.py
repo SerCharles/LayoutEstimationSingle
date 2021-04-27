@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from torchvision import transforms
 
-def normalize(norm):
+def normalize(norm, epsilon):
     ''' 
     description: normalize the normal vector 
     parameter: normal vector
@@ -22,7 +22,7 @@ def normalize(norm):
     nx = norm[:][0 : 1][:][:]
     ny = norm[:][1 : 2][:][:]
     nz = norm[:][2 : 3][:][:]
-    length = torch.sqrt(torch.pow(nx, 2) + torch.pow(ny, 2) + torch.pow(nz, 2))
-    norm = norm / length
+    length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
+    norm = norm / (length + epsilon)
     return norm
 

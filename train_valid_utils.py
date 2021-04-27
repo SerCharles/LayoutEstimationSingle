@@ -33,7 +33,7 @@ def init_args():
     parser.add_argument('--cuda',  type = int, default = 1, help = 'use GPU or not')
     parser.add_argument('--parallel',  type = int, default = 1, help = 'use multiple GPUs or not')
     parser.add_argument('--gpu_id', type = int, default = 1, help = 'GPU device id used')
-    parser.add_argument('--epochs', default = 10000, type = int)
+    parser.add_argument('--epochs', default = 200, type = int)
     parser.add_argument('--start_epoch', default = 0, type = int,
                     help = 'manual epoch number (useful on restarts)')
     parser.add_argument('--learning_rate', '--lr', default = 1e-3, type = float)
@@ -106,6 +106,7 @@ def init_model(args):
     if device:
         if args.parallel: 
             model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7]).cuda()
+            #model = torch.nn.DataParallel(model, device_ids = [1, 4, 8, 9]).cuda()
         else: 
             model = model.cuda()
 

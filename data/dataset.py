@@ -193,37 +193,44 @@ class MatterPortDataSet(Dataset):
             boundary_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_boundary.png')
             radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
 
+            depth = self.load_depth(depth_name)
             #layout_depth = self.load_depth(layout_depth_name)
             #layout_seg = self.load_depth(layout_seg_name)
-            nx = self.load_image(nx_name)
-            ny = self.load_image(ny_name)
-            nz = self.load_image(nz_name)
+            #nx = self.load_image(nx_name)
+            #ny = self.load_image(ny_name)
+            #nz = self.load_image(nz_name)
 
 
                 
         if self.type == 'testing':
             image = self.transform(image)
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            mesh_x = self.transform(mesh_x)
-            mesh_y = self.transform(mesh_y)
-            return image, intrinsic, mesh_x, mesh_y
+            #mesh_x = self.transform(mesh_x)
+            #mesh_y = self.transform(mesh_y)
+            #return image, intrinsic, mesh_x, mesh_y
+            return image, intrinsic
         else:
             image = self.transform(image)
+            depth = self.transform(depth) / 4000.0
             #layout_depth = self.transform(layout_depth) / 4000.0
             #layout_seg = self.transform(layout_seg)
+
+            '''
             mesh_x = self.transform(mesh_x)
             mesh_y = self.transform(mesh_y)
+
 
             nx = self.transform(nx).float()
             ny = self.transform(ny).float()
             nz = self.transform(nz).float()
             normal = torch.cat((nx, ny, nz), dim = 0).float()
             normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
-
             normal = normal / (normal_length + 1e-8)
+            '''
+
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            return image,  normal, intrinsic, mesh_x, mesh_y
-            #return image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y
+            #return image, normal, intrinsic, mesh_x, mesh_y
+            return image, depth, intrinsic
 
 
     def get_valid_filenames(self):

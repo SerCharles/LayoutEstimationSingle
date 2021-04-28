@@ -32,7 +32,7 @@ def init_args():
     parser.add_argument('--seed', default = 1453)
     parser.add_argument('--cuda',  type = int, default = 1, help = 'use GPU or not')
     parser.add_argument('--parallel',  type = int, default = 1, help = 'use multiple GPUs or not')
-    parser.add_argument('--gpu_id', type = int, default = 1, help = 'GPU device id used')
+    parser.add_argument('--gpu_id', type = int, default = 0, help = 'GPU device id used')
     parser.add_argument('--epochs', default = 200, type = int)
     parser.add_argument('--start_epoch', default = 0, type = int,
                     help = 'manual epoch number (useful on restarts)')
@@ -85,12 +85,14 @@ def init_model(args):
     return: device, dataloader_train, dataloader_valid, model, optimizer
     '''
     print(args)
-    print('getting device...', end='')
+    print('getting device...')
     torch.manual_seed(args.seed)
     if args.cuda == 1:
         device = True
+        '''
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3) + \
-        ',' + str(args.gpu_id + 4) + ',' + str(args.gpu_id + 5) + ',' + str(args.gpu_id + 6) + ',' + str(args.gpu_id + 7)
+        ',' + str(args.gpu_id + 4) + ',' + str(args.gpu_id + 5) + ',' + str(args.gpu_id + 6) + ',' + str(args.gpu_id + 7)+ ',' + str(args.gpu_id + 8) + ',' + str(args.gpu_id + 9)
+        '''
     else:
         device = False
     torch.backends.cudnn.enabled = True
@@ -99,14 +101,14 @@ def init_model(args):
 
     print('Initialize model')
     
-    model = DORN(channel = 5, output_channel = 3)
-
+    #model = DORN(channel = 5, output_channel = 3)
+    model = DORN(channel = 3, output_channel = 180)
 
 
     if device:
         if args.parallel: 
-            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7]).cuda()
-            #model = torch.nn.DataParallel(model, device_ids = [1, 4, 8, 9]).cuda()
+            #model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).cuda()
+            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3]).cuda()
         else: 
             model = model.cuda()
 

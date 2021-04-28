@@ -26,7 +26,7 @@ def depth_metrics(depth_map, depth_map_gt):
     diff_square = torch.pow(abs_diff, 2)
     diff_square = diff_square.view(batch_size, -1)
     diff_square_avg = torch.mean(diff_square, dim = 1)
-    rmse = float(torch.mean(torch.sqrt(diff_square_avg)))
+    rms = float(torch.mean(torch.sqrt(diff_square_avg)))
 
     aa = log10(depth_map)
     bb = log10(depth_map_gt)

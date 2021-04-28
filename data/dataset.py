@@ -194,6 +194,7 @@ class MatterPortDataSet(Dataset):
             radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
 
             depth = self.load_depth(depth_name)
+            
             #layout_depth = self.load_depth(layout_depth_name)
             #layout_seg = self.load_depth(layout_seg_name)
             #nx = self.load_image(nx_name)
@@ -212,6 +213,8 @@ class MatterPortDataSet(Dataset):
         else:
             image = self.transform(image)
             depth = self.transform(depth) / 4000.0
+            mask = torch.eq(depth, 0)
+            depth = depth + mask * 1e-4
             #layout_depth = self.transform(layout_depth) / 4000.0
             #layout_seg = self.transform(layout_seg)
 
@@ -263,24 +266,27 @@ def data_test():
     i = 0
     print('length:', a.__len__())
     #image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
-    image, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
+    #image, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
+    image, depth, intrinsic = a.__getitem__(i)
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('image:', image, image.size())
     #print('layout_depth:', layout_depth, layout_depth.size())
     #print('layout_seg:', layout_seg, layout_seg.size())
-    print('normal', normal, normal.size())
+    #print('normal', normal, normal.size())
+    print('depth:', depth, depth.shape)
     print('intrinsic:', intrinsic, intrinsic.shape)
-    print('mesh_x', mesh_x, mesh_x.size())
-    print('mesh_y', mesh_y, mesh_y.size())
-    print(normal.mean())
+    #print('mesh_x', mesh_x, mesh_x.size())
+    #print('mesh_y', mesh_y, mesh_y.size())
+    print(torch.sum(torch.eq(depth, 0)))
     
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10
     print('length:', b.__len__())
-    image, intrinsic, mesh_x, mesh_y = b.__getitem__(j)
+    #image, intrinsic, mesh_x, mesh_y = b.__getitem__(j)
+    image, intrinsic = b.__getitem__(j)
     print('image:', image, image.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-    print('mesh_x', mesh_x, mesh_x.size())
-    print('mesh_y', mesh_y, mesh_y.size())
+    #print('mesh_x', mesh_x, mesh_x.size())
+    #print('mesh_y', mesh_y, mesh_y.size())
 #data_test()

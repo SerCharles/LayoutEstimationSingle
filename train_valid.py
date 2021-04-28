@@ -121,16 +121,16 @@ def valid(args, device, valid_loader, model, epoch):
             average_meter.add_batch(batch_size, the_avg_loss, mean, median, rmse, d_1125, d_2250, d_30)
             ''' 
             my_depth = model(image, depth)
-            rms, rel, rlog10, rate_1, rate_2, rate_3 = depth_metrics(my_depth, depth)
-            average_meter.add_batch(batch_size, rms, rel, log10, delta_1, delta_2, delta_3)
+            rms, rel, rlog10, delta_1, delta_2, delta_3 = depth_metrics(my_depth, depth, args.epsilon)
+            average_meter.add_batch(batch_size, rms, rel, rlog10, delta_1, delta_2, delta_3)
 
         end = time.time()
         the_time = end - start
 
-        result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s, Loss {:.4f}\n' \
-            .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time, the_avg_loss) + \
+        result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s\n' \
+            .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time) + \
             'rms: {:.4f}, rel: {:.4f}, log10: {:.4f}, delta_1: {:.3f}, delta_2: {:.3f}, delta_3: {:.3f}' \
-            .format(rms, rel, rlog10, rate_1, rate_2, rate_3)
+            .format(rms, rel, rlog10, delta_1, delta_2, delta_3)
         '''
         'mean: {:.4f}, median: {:.4f}, rmse: {:.4f}, 11.25: {:.3f}, 22.50: {:.3f}, 30: {:.3f}' 
         .format(mean, median, rmse, d_1125, d_2250, d_30)

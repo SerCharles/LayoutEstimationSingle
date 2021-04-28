@@ -14,10 +14,10 @@ from scipy.optimize import linear_sum_assignment
 def log10(x):
     return torch.log(x) / log(10)
 
-def depth_metrics(depth_map, depth_map_gt):
+def depth_metrics(depth_map, depth_map_gt, epsilon):
     '''
     description: get the depth metrics of the got depth map and the ground truth
-    parameter: depth map of mine and the ground truth
+    parameter: depth map of mine and the ground truth, epsilon
     return: several metrics, rms, rel, log10, 1.25, 1.25^2, 1.25^3
     '''
     batch_size = depth_map_gt.size(0)
@@ -29,10 +29,10 @@ def depth_metrics(depth_map, depth_map_gt):
     rms = float(torch.mean(torch.sqrt(diff_square_avg)))
 
     aa = log10(depth_map)
-    bb = log10(depth_map_gt)
+    bb = log10(depth_map_gt + epsilon)
     cc = (aa - bb).abs()
     rlog10 = float(cc.mean())
-    rel = float((abs_diff / depth_map_gt).mean())
+    rel = float((abs_diff / (depth_map_gt + epsilon)).mean())
 
     max_ratio = torch.max(depth_map / depth_map_gt, depth_map_gt / depth_map)
     rate_1 = float(((max_ratio < 1.25) & (max_ratio >= 0)).float().mean())

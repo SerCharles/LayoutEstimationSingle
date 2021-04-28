@@ -47,11 +47,11 @@ class AverageMeterDepth(object):
         
 
     
-    def add_batch(self, length, rms, rel, log10, delta_1, delta_2, delta_3):
+    def add_batch(self, length, rms, rel, rlog10, delta_1, delta_2, delta_3):
         self.total_num += length 
         self.total_rms += length * rms 
         self.total_rel += length * rel
-        self.total_log10 += length * log10
+        self.total_log10 += length * rlog10
         self.total_delta_1 += length * delta_1
         self.total_delta_2 += length * delta_2 
         self.total_delta_3 += length * delta_3

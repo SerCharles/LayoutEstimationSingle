@@ -251,69 +251,7 @@ class ResNet(nn.Module):
                 m.eval()
 
 
-class OrdinalRegressionLayer(nn.Module):
-    def __init__(self):
-        super(OrdinalRegressionLayer, self).__init__()
 
-    def forward(self, x):
-        """
-        :param x: NxCxHxW, N is batch_size, C is channels of features
-        :return: ord_label is ordinal outputs for each spatial locations , N x 1 x H x W
-                 ord prob is the probability of each label, N x OrdNum x H x W
-        """
-        N, C, H, W = x.size()
-        ord_num = C // 2
-
-        x = x.view(-1, 2, ord_num, H, W)
-        if self.training:
-            prob = F.log_softmax(x, dim=1).view(N, C, H, W)
-            return prob
-
-        ord_prob = F.softmax(x, dim=1)[:, 0, :, :, :]
-        ord_label = torch.sum((ord_prob > 0.5), dim=1)
-        return ord_prob, ord_label
-
-
-class OrdinalRegressionLoss(object):
-    
-    def __init__(self, ord_num, beta):
-        self.ord_num = ord_num
-        self.beta = beta
-
-    def _create_ord_label(self, gt):
-        N, C, H, W = gt.shape
-        # print("gt shape:", gt.shape)
-
-        ord_c0 = torch.ones(N, self.ord_num, H, W).to(gt.device)
-        label = self.ord_num * torch.log(gt) / np.log(self.beta)
-        label = label.long()
-        mask = torch.linspace(0, self.ord_num - 1, self.ord_num, requires_grad=False) \
-            .view(1, self.ord_num, 1, 1).to(gt.device)
-        mask = mask.repeat(N, 1, H, W).contiguous().long()
-        mask = (mask > label)
-        ord_c0[mask] = 0
-        ord_c1 = 1 - ord_c0
-        # implementation according to the paper.
-        # ord_label = torch.ones(N, self.ord_num * 2, H, W).to(gt.device)
-        # ord_label[:, 0::2, :, :] = ord_c0
-        # ord_label[:, 1::2, :, :] = ord_c1
-        # reimplementation for fast speed.
-        ord_label = torch.cat((ord_c0, ord_c1), dim=1)
-        return ord_label, mask
-
-    def __call__(self, prob, gt):
-        """
-        :param prob: ordinal regression probability, N x 2*Ord Num x H x W, torch.Tensor
-        :param gt: depth ground truth, NXHxW, torch.Tensor
-        :return: loss: loss value, torch.float
-        """
-        # N, C, H, W = prob.shape
-        #valid_mask = gt > 0.
-        ord_label, mask = self._create_ord_label(gt)
-        # print("prob shape: {}, ord label shape: {}".format(prob.shape, ord_label.shape))
-        entropy = -prob * ord_label
-        loss = torch.sum(entropy, dim=1)
-        return loss.mean()
 
 class DORN(nn.Module):
     def __init__(self, output_size=(240, 320), losstype=1, channel=3, pretrained=True, freeze=True, output_channel=3, dataset='kitti', gamma=1.0, beta=80.0):
@@ -321,62 +259,12 @@ class DORN(nn.Module):
 
         self.output_size = output_size
         self.channel = channel
-        self.ord_num = output_channel // 2
-        self.beta = beta 
-        self.gamma = gamma
         self.feature_extractor = ResNet(in_channels=channel, pretrained=pretrained, freeze=freeze)
         self.aspp_module = SceneUnderstandingModule(output_channel=output_channel, dataset=dataset)
-        self.regression_layer = OrdinalRegressionLayer()
-        self.criterion = OrdinalRegressionLoss(self.ord_num, beta)
-        self.losstype = losstype
-
 
 
     def forward(self, x, ground_truth):
         x1 = self.feature_extractor(x)
         x2 = self.aspp_module(x1)
-        if self.training:
-            prob = self.regression_layer(x2)
-            loss = self.criterion(prob, ground_truth)
-            #print(loss)
-            return loss
+        return x2
 
-        prob, label = self.regression_layer(x2)
-        # print("prob shape:", prob.shape, " label shape:", label.shape)
-        t0 = torch.exp(np.log(self.beta) * label.float() / self.ord_num)
-        t1 = torch.exp(np.log(self.beta) * (label.float() + 1) / self.ord_num)
-
-        depth = (t0 + t1) / 2 - self.gamma
-        # print("depth min:", torch.min(depth), " max:", torch.max(depth),
-        #       " label min:", torch.min(label), " max:", torch.max(label))
-        return depth
-
-    def get_1x_lr_params(self):
-        b = [self.feature_extractor]
-        for i in range(len(b)):
-            for k in b[i].parameters():
-                if k.requires_grad:
-                    yield k
-
-    def get_10x_lr_params(self):
-        b = [self.aspp_module, self.orl]
-        for j in range(len(b)):
-            for k in b[j].parameters():
-                if k.requires_grad:
-                    yield k
-
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # 默认使用GPU 0
-
-if __name__ == "__main__":
-    model = DORN()
-    model = model.cuda()
-    model.eval()
-    image = torch.randn(1, 3, 257, 353)
-    image = image.cuda()
-    with torch.no_grad():
-        out0, out1 = model(image)
-    print('out0 size:', out0.size())
-    print('out1 size:', out1.size())
-
-    print(out0)

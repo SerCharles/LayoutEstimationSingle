@@ -193,10 +193,9 @@ class MatterPortDataSet(Dataset):
             boundary_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_boundary.png')
             radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
 
-            depth = self.load_depth(depth_name)
             
-            #layout_depth = self.load_depth(layout_depth_name)
-            #layout_seg = self.load_depth(layout_seg_name)
+            layout_depth = self.load_depth(layout_depth_name)
+            layout_seg = self.load_depth(layout_seg_name)
             #nx = self.load_image(nx_name)
             #ny = self.load_image(ny_name)
             #nz = self.load_image(nz_name)
@@ -212,11 +211,8 @@ class MatterPortDataSet(Dataset):
             return image, intrinsic
         else:
             image = self.transform(image)
-            depth = self.transform(depth) / 4000.0
-            mask = torch.eq(depth, 0)
-            depth = depth + mask * 1e-4
-            #layout_depth = self.transform(layout_depth) / 4000.0
-            #layout_seg = self.transform(layout_seg)
+            layout_depth = self.transform(layout_depth) / 4000.0
+            layout_seg = self.transform(layout_seg)
 
             '''
             mesh_x = self.transform(mesh_x)
@@ -233,7 +229,7 @@ class MatterPortDataSet(Dataset):
 
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             #return image, normal, intrinsic, mesh_x, mesh_y
-            return image, depth, intrinsic
+            return image, layout_depth, layout_seg, intrinsic
 
 
     def get_valid_filenames(self):
@@ -267,14 +263,14 @@ def data_test():
     print('length:', a.__len__())
     #image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
     #image, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
-    image, depth, intrinsic = a.__getitem__(i)
+    image, layout_depth, layout_seg, intrinsic = a.__getitem__(i)
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('image:', image, image.size())
-    #print('layout_depth:', layout_depth, layout_depth.size())
-    #print('layout_seg:', layout_seg, layout_seg.size())
+    print('layout_depth:', layout_depth, layout_depth.size())
+    print('layout_seg:', layout_seg, layout_seg.size())
     #print('normal', normal, normal.size())
-    print('depth:', depth, depth.shape)
+    #print('depth:', depth, depth.shape)
     print('intrinsic:', intrinsic, intrinsic.shape)
     #print('mesh_x', mesh_x, mesh_x.size())
     #print('mesh_y', mesh_y, mesh_y.size())

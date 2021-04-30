@@ -254,7 +254,7 @@ class ResNet(nn.Module):
 
 
 class DORN(nn.Module):
-    def __init__(self, output_size=(240, 320), losstype=1, channel=3, pretrained=True, freeze=True, output_channel=3, dataset='kitti', gamma=1.0, beta=80.0):
+    def __init__(self, output_size=(240, 320), losstype=1, channel=3, pretrained=True, freeze=True, output_channel=3, dataset='kitti'):
         super(DORN, self).__init__()
 
         self.output_size = output_size
@@ -263,7 +263,7 @@ class DORN(nn.Module):
         self.aspp_module = SceneUnderstandingModule(output_channel=output_channel, dataset=dataset)
 
 
-    def forward(self, x, ground_truth):
+    def forward(self, x):
         x1 = self.feature_extractor(x)
         x2 = self.aspp_module(x1)
         return x2

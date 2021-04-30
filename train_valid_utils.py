@@ -43,6 +43,10 @@ def init_args():
     parser.add_argument('--data_dir', default = '/home/shenguanlin/geolayout', type = str)
     parser.add_argument('--save_dir', default = '/home/shenguanlin/geolayout_result', type = str)
     parser.add_argument('--cur_name', default = 'final', type = str)
+    parser.add_argument('--ord_num', default = 90, type = int)
+    parser.add_argument('--ordinal_beta', default = 80.0, type = float)
+    parser.add_argument('--ordinal_gamma', default = 1.0, type = float)
+    parser.add_argument('--discretization', default = 'UD', type = str)
 
     args = parser.parse_args()
     return args
@@ -102,7 +106,7 @@ def init_model(args):
     print('Initialize model')
     
     #model = DORN(channel = 5, output_channel = 3)
-    model = DORN(channel = 3, output_channel = 180)
+    model = DORN(channel = 3, output_channel = args.ord_num * 2)
 
 
     if device:

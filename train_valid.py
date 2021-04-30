@@ -32,13 +32,12 @@ def train(args, device, train_loader, model, optimizer, epoch):
     #average_meter = AverageMeter()
     #for i, (image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
     #for i, (image, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
-    for i, (image, depth, intrinsic) in enumerate(train_loader):
+    for i, (image, layout_depth, init_label, intrinsic) in enumerate(train_loader):
         start = time.time()
         if device:
             image = image.cuda()
-            depth = depth.cuda()
-            #layout_depth = layout_depth.cuda()
-            #layout_seg = layout_seg.cuda()
+            layout_depth = layout_depth.cuda()
+            init_label = init_label.cuda()
             #normal = normal.cuda()
             intrinsic = intrinsic.cuda()
             #mesh_x = mesh_x.cuda() 
@@ -50,7 +49,10 @@ def train(args, device, train_loader, model, optimizer, epoch):
         
         #the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
         optimizer.zero_grad()
-        loss = model(image, depth).mean()
+
+        output = model(image)
+        mask = torch.ne(init_label, 0)
+        loss = ordinal_regression_loss(output, layout_depth, mask, args.ord_num, args.ordinal_beta, args.discretization)
         '''
         output = model(the_input)
         output = normalize(output, args.epsilon)
@@ -91,20 +93,19 @@ def valid(args, device, valid_loader, model, epoch):
     average_meter = AverageMeterDepth()
     #for i, (image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
     #for i, (image, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
-    for i, (image, depth, intrinsic) in enumerate(valid_loader):
-
+    for i, (image, layout_depth, init_label, intrinsic) in enumerate(valid_loader):
         start = time.time()
 
         if device:
             image = image.cuda()
-            #layout_depth = layout_depth.cuda()
+            layout_depth = layout_depth.cuda()
+            init_label = init_label.cuda()
             #layout_seg = layout_seg.cuda()
             #normal = normal.cuda()
-            depth = depth.cuda()
+            #depth = depth.cuda()
             intrinsic = intrinsic.cuda()
             #mesh_x = mesh_x.cuda() 
             #mesh_y = mesh_y.cuda()
-
         with torch.no_grad():
             batch_size = image.size(0)
             num_pixels = image.size(2) * image.size(3)
@@ -120,14 +121,18 @@ def valid(args, device, valid_loader, model, epoch):
             the_avg_loss = loss.item() / num_pixels / batch_size
             average_meter.add_batch(batch_size, the_avg_loss, mean, median, rmse, d_1125, d_2250, d_30)
             ''' 
-            my_depth = model(image, depth)
-            rms, rel, rlog10, delta_1, delta_2, delta_3 = depth_metrics(my_depth, depth, args.epsilon)
+            mask = torch.ne(init_label, 0)
+
+
+            output = model(image)
+            my_depth = get_predicted_depth(output, args.ordinal_beta, args.ordinal_gamma, args.discretization)
+            rms, rel, rlog10, delta_1, delta_2, delta_3 = depth_metrics(my_depth, layout_depth, mask)
             average_meter.add_batch(batch_size, rms, rel, rlog10, delta_1, delta_2, delta_3)
 
         end = time.time()
         the_time = end - start
 
-        result_string = 'Train: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s\n' \
+        result_string = 'Valid: Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s\n' \
             .format(epoch + 1, args.epochs, i + 1, len(valid_loader), the_time) + \
             'rms: {:.4f}, rel: {:.4f}, log10: {:.4f}, delta_1: {:.3f}, delta_2: {:.3f}, delta_3: {:.3f}' \
             .format(rms, rel, rlog10, delta_1, delta_2, delta_3)

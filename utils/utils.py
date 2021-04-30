@@ -11,6 +11,8 @@ import PIL
 import torch
 import torch.nn as nn
 from torchvision import transforms
+import torch.nn.functional as F
+
 
 def normalize(norm, epsilon):
     ''' 
@@ -27,16 +29,15 @@ def normalize(norm, epsilon):
     return norm
 
 
-def ordinal_regression_loss(predict_result, gt, useful_mask, beta, discretization):
+def ordinal_regression_loss(predict_result, gt, useful_mask, ord_num, beta, discretization):
     ''' 
     description: get the ordinal regression loss, used only in training
     parameter: the prediction calculated by the network, the ground truth label of pictures, the useful masks, other hyperparameters
     return: the regrssion loss
     '''
     N, C, H, W = gt.shape
-    ord_num = C // 2
     predict_result = predict_result.view(N, 2, ord_num, H, W)
-    prob = F.log_softmax(x, dim = 1).view(N, C, H, W)
+    prob = F.log_softmax(predict_result, dim = 1).view(N, 2 * ord_num, H, W)
 
     ord_c0 = torch.ones(N, ord_num, H, W).to(gt.device)
     if discretization == "SID":
@@ -53,20 +54,20 @@ def ordinal_regression_loss(predict_result, gt, useful_mask, beta, discretizatio
     ord_c1 = 1 - ord_c0
     ord_label = torch.cat((ord_c0, ord_c1), dim = 1)
 
-    entropy = -probability * ord_label * useful_mask
+    entropy = -prob * ord_label * useful_mask
     loss = torch.sum(entropy, dim = 1).mean()
     return loss
 
-def get_predicted_depth(predicted_result, gt, beta, gamma, discretization):
+def get_predicted_depth(predicted_result, beta, gamma, discretization):
     ''' 
     description: get depth based on the predicted result, used in validation
     parameter: predicted result, other hyperparameters
     return: predicted depth
     '''
-    N, C, H, W = x.size()
+    N, C, H, W = predicted_result.size()
     ord_num = C // 2
-
-    ord_prob = F.softmax(x, dim = 1)[:, 0, :, :, :]
+    predicted_result = predicted_result.view(N, 2, ord_num, H, W)
+    ord_prob = F.softmax(predicted_result, dim = 1)[:, 0, :, :, :]
     ord_label = torch.sum((ord_prob > 0.5), dim = 1)
 
     if discretization == "SID":
@@ -76,4 +77,5 @@ def get_predicted_depth(predicted_result, gt, beta, gamma, discretization):
         t0 = 1.0 + (beta - 1.0) * ord_label.float() / ord_num
         t1 = 1.0 + (beta - 1.0) * (ord_label.float() + 1) / ord_num
     depth = (t0 + t1) / 2 - gamma
+    depth = depth.view(N, 1, H, W)
     return depth

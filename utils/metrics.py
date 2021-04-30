@@ -14,30 +14,36 @@ from scipy.optimize import linear_sum_assignment
 def log10(x):
     return torch.log(x) / log(10)
 
-def depth_metrics(depth_map, depth_map_gt, epsilon):
+def depth_metrics(depth_map, depth_map_gt, mask):
     '''
     description: get the depth metrics of the got depth map and the ground truth
-    parameter: depth map of mine and the ground truth, epsilon
+    parameter: depth map of mine and the ground truth, mask
     return: several metrics, rms, rel, log10, 1.25, 1.25^2, 1.25^3
     '''
     batch_size = depth_map_gt.size(0)
-    abs_diff = (depth_map - depth_map_gt).abs()
+    number_by_batch = mask.view(batch_size, -1).sum(dim = 1).float()
+    total_num = mask.float().sum()
+    abs_diff = (depth_map - depth_map_gt).abs() * mask
 
     diff_square = torch.pow(abs_diff, 2)
     diff_square = diff_square.view(batch_size, -1)
-    diff_square_avg = torch.mean(diff_square, dim = 1)
+    diff_square_avg = torch.sum(diff_square, dim = 1) / number_by_batch
     rms = float(torch.mean(torch.sqrt(diff_square_avg)))
 
-    aa = log10(depth_map)
-    bb = log10(depth_map_gt + epsilon)
+    aa = log10(depth_map) * mask
+    bb = log10(depth_map_gt) * mask
     cc = (aa - bb).abs()
-    rlog10 = float(cc.mean())
-    rel = float((abs_diff / (depth_map_gt + epsilon)).mean())
+    cc_avg = cc.view(batch_size, -1).sum(dim = 1) / number_by_batch
+    rlog10 = float(torch.mean(cc_avg))
+
+    rel_avg = torch.sum((abs_diff / depth_map_gt).view(batch_size, -1), dim = 1) / number_by_batch
+    rel = float(torch.mean(rel_avg))
 
     max_ratio = torch.max(depth_map / depth_map_gt, depth_map_gt / depth_map)
-    rate_1 = float(((max_ratio < 1.25) & (max_ratio >= 0)).float().mean())
-    rate_2 = float(((max_ratio < (1.25 ** 2)) & (max_ratio >= 0)).float().mean())
-    rate_3 = float(((max_ratio < (1.25 ** 3)) & (max_ratio >= 0)).float().mean())
+
+    rate_1 = float(((max_ratio < 1.25) & mask).float().sum() / total_num)
+    rate_2 = float(((max_ratio < (1.25 ** 2))  & mask).float().sum() / total_num)
+    rate_3 = float(((max_ratio < (1.25 ** 3))  & mask).float().sum() / total_num)
 
     return rms, rel, rlog10, rate_1, rate_2, rate_3
 
@@ -47,6 +53,8 @@ def norm_metrics(norm, norm_gt, epsilon):
     parameter: norm mine and the ground truth, epsilon
     return: several metrics, mean, median, rmse, 11.25, 22.5, 30
     '''
+
+
     dot_product = torch.sum(norm * norm_gt, dim = 1)
     dot = torch.clamp(dot_product, min = -1.0, max = 1.0)
     errors = torch.acos(dot) / np.pi * 180

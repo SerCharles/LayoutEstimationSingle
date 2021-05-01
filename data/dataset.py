@@ -196,26 +196,24 @@ class MatterPortDataSet(Dataset):
             
             layout_depth = self.load_depth(layout_depth_name)
             init_label = self.load_depth(init_label_name)
-            #layout_seg = self.load_depth(layout_seg_name)
-            #nx = self.load_image(nx_name)
-            #ny = self.load_image(ny_name)
-            #nz = self.load_image(nz_name)
+            nx = self.load_image(nx_name)
+            ny = self.load_image(ny_name)
+            nz = self.load_image(nz_name)
 
 
                 
         if self.type == 'testing':
             image = self.transform(image)
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            #mesh_x = self.transform(mesh_x)
-            #mesh_y = self.transform(mesh_y)
-            #return image, intrinsic, mesh_x, mesh_y
-            return image, intrinsic
+            mesh_x = self.transform(mesh_x)
+            mesh_y = self.transform(mesh_y)
+            return image, intrinsic, mesh_x, mesh_y
         else:
             image = self.transform(image)
             layout_depth = self.transform(layout_depth) / 4000.0
             init_label = self.transform(init_label)
 
-            '''
+            
             mesh_x = self.transform(mesh_x)
             mesh_y = self.transform(mesh_y)
 
@@ -226,11 +224,10 @@ class MatterPortDataSet(Dataset):
             normal = torch.cat((nx, ny, nz), dim = 0).float()
             normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
             normal = normal / (normal_length + 1e-8)
-            '''
+            
 
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            #return image, normal, intrinsic, mesh_x, mesh_y
-            return image, layout_depth, init_label, intrinsic
+            return image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y
 
 
     def get_valid_filenames(self):
@@ -262,28 +259,25 @@ def data_test():
     a = MatterPortDataSet('E:\\dataset\\geolayout', 'training')
     i = 0
     print('length:', a.__len__())
-    #image, layout_depth, layout_seg, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
-    #image, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
-    image, layout_depth, init_label, intrinsic = a.__getitem__(i)
+    image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
+
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('image:', image, image.size())
     print('layout_depth:', layout_depth, layout_depth.size())
     print('init_label:', init_label, init_label.size())
-    #print('normal', normal, normal.size())
-    #print('depth:', depth, depth.shape)
+    print('normal', normal, normal.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-    #print('mesh_x', mesh_x, mesh_x.size())
-    #print('mesh_y', mesh_y, mesh_y.size())
+    print('mesh_x', mesh_x, mesh_x.size())
+    print('mesh_y', mesh_y, mesh_y.size())
     print(torch.sum(torch.eq(depth, 0)))
     
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10
     print('length:', b.__len__())
-    #image, intrinsic, mesh_x, mesh_y = b.__getitem__(j)
-    image, intrinsic = b.__getitem__(j)
+    image, intrinsic, mesh_x, mesh_y = b.__getitem__(j)
     print('image:', image, image.size())
     print('intrinsic:', intrinsic, intrinsic.shape)
-    #print('mesh_x', mesh_x, mesh_x.size())
-    #print('mesh_y', mesh_y, mesh_y.size())
+    print('mesh_x', mesh_x, mesh_x.size())
+    print('mesh_y', mesh_y, mesh_y.size())
 #data_test()

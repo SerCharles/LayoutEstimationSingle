@@ -93,10 +93,12 @@ def init_model(args):
     torch.manual_seed(args.seed)
     if args.cuda == 1:
         device = True
+        
         '''
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3) + \
         ',' + str(args.gpu_id + 4) + ',' + str(args.gpu_id + 5) + ',' + str(args.gpu_id + 6) + ',' + str(args.gpu_id + 7)+ ',' + str(args.gpu_id + 8) + ',' + str(args.gpu_id + 9)
         '''
+        #os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2)
     else:
         device = False
     torch.backends.cudnn.enabled = True
@@ -105,8 +107,8 @@ def init_model(args):
 
     print('Initialize model')
     
-    #model = DORN(channel = 5, output_channel = 3)
-    model = DORN(channel = 3, output_channel = args.ord_num * 2)
+    model = DORN(channel = 5, output_channel = 3)
+    #model = DORN(channel = 3, output_channel = args.ord_num * 2)
 
 
     if device:

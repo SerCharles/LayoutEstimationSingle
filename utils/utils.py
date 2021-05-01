@@ -79,3 +79,17 @@ def get_predicted_depth(predicted_result, beta, gamma, discretization):
     depth = (t0 + t1) / 2 - gamma
     depth = depth.view(N, 1, H, W)
     return depth
+
+def get_norm_loss(norm, norm_gt, mask):
+    ''' 
+    description: get the normal loss 
+    parameter: the norm got by us, the norm of the ground truth(both normalized), the mask
+    return: normal loss, loss per pixel
+    '''
+    batch_size = norm_gt.size(0)
+    pixels = torch.sum(mask).float()
+    norm_plain = (norm * mask).view(batch_size, -1)
+    norm_gt_plain = (norm_gt * mask).view(batch_size, -1)
+    loss = torch.sum((norm_plain - norm_gt_plain) ** 2)
+    loss_per_pixel = float(loss / pixels)
+    return loss, loss_per_pixel

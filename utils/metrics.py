@@ -47,29 +47,32 @@ def depth_metrics(depth_map, depth_map_gt, mask):
 
     return rms, rel, rlog10, rate_1, rate_2, rate_3
 
-def norm_metrics(norm, norm_gt, epsilon):
+def norm_metrics(norm, norm_gt, epsilon, mask):
     '''
     description: get the norm metrics of the got norm and the ground truth norm
-    parameter: norm mine and the ground truth, epsilon
+    parameter: norm mine and the ground truth, epsilon, mask
     return: several metrics, mean, median, rmse, 11.25, 22.5, 30
     '''
 
-
-    dot_product = torch.sum(norm * norm_gt, dim = 1)
+    batch_size = norm_gt.size(0)
+    number_by_batch = mask.view(batch_size, -1).sum(dim = 1).float()
+    total_num = mask.float().sum()
+    dot_product = torch.sum(norm * norm_gt, dim = 1, keepdim = True) #N * 1 * W * H
     dot = torch.clamp(dot_product, min = -1.0, max = 1.0)
     errors = torch.acos(dot) / np.pi * 180
 
-    mean = float(torch.mean(errors))
-    median = float(torch.median(errors))
+    selected_error = torch.masked_select(errors, mask)
 
-    batch_size = norm.size(0)
+    mean = float(torch.mean(selected_error))
+    median = float(torch.median(selected_error))
+
     error_square = torch.pow(errors, 2).view(batch_size, -1)
     total_size = batch_size * error_square.size(1)
-    error_square_avg = torch.mean(error_square, 1)
+    error_square_avg = torch.sum(error_square, dim = 1) / number_by_batch
     rmse = float(torch.mean(torch.sqrt(error_square_avg)))
 
-    delta_1 = float((errors < 11.25).float().mean())
-    delta_2 = float((errors < 22.5).float().mean())
-    delta_3 = float((errors < 30).float().mean())
+    delta_1 = float(((errors < 11.25) & mask).float().sum() / total_num)
+    delta_2 = float(((errors < 22.5) & mask).float().sum() / total_num)
+    delta_3 = float(((errors < 30) & mask).float().sum() / total_num)
 
     return mean, median, rmse, delta_1, delta_2, delta_3

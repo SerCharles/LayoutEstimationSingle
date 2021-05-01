@@ -93,3 +93,23 @@ def get_norm_loss(norm, norm_gt, mask):
     loss = torch.sum((norm_plain - norm_gt_plain) ** 2)
     loss_per_pixel = float(loss / pixels)
     return loss, loss_per_pixel
+
+
+def get_segmentation_loss(output, init_label, epsilon):
+    ''' 
+    description: get the segmentation accuracy and cross entropy loss
+    parameter: the output, the ground truth segmentation
+    return: accuracy, loss
+    '''
+    N, C, H, W = init_label.size()
+    total_num = N * H * W
+    softmaxed_output = F.softmax(output, dim = 1) 
+    mask_true = torch.ne(init_label, 0)
+    mask_false = ~mask_true 
+    one_hot_gt = torch.cat((mask_true, mask_false), dim = 1).float()
+    cross_entropy_loss = -torch.sum(one_hot_gt * torch.log(softmaxed_output + epsilon))
+    probability_true = softmaxed_output[:, 0:1, :, :]
+    predict_true = probability_true > 0.5
+
+    accuracy = float((predict_true == mask_true).float().sum() / total_num)
+    return accuracy, cross_entropy_loss

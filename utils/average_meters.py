@@ -34,6 +34,7 @@ class AverageMeterNorm(object):
         avg_2250 = self.total_2250 / self.total_num
         avg_30 = self.total_30 / self.total_num
         return avg_loss, avg_mean, avg_median, avg_rmse, avg_1125, avg_2250, avg_30
+    
 
 class AverageMeterDepth(object):
     def __init__(self):
@@ -64,3 +65,53 @@ class AverageMeterDepth(object):
         avg_delta_2 = self.total_delta_2 / self.total_num
         avg_delta_3 = self.total_delta_3 / self.total_num
         return avg_rms, avg_rel, avg_log10, avg_delta_1, avg_delta_2, avg_delta_3
+
+class AverageMeterSeg(object):
+    def __init__(self):
+        self.total_num = 0
+        self.total_loss = 0
+        self.total_acc = 0
+    
+    def add_batch(self, length, loss, acc):
+        self.total_num += length 
+        self.total_loss += length * loss 
+        self.total_acc += length * acc
+    
+    def get_average(self):
+        avg_loss = self.total_loss / self.total_num 
+        avg_acc = self.total_acc / self.total_num
+        return avg_loss, avg_acc
+
+
+def get_result_string_total(the_type, epoch, epochs, batch, batchs, time, loss):
+    if loss == None:
+        result_string = the_type + ': Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s' \
+            .format(epoch, epochs, batch, batchs, time)
+    else: 
+        result_string = the_type + ': Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s, Loss {:.4f}' \
+            .format(epoch, epochs, batch, batchs, time, loss)
+    return result_string
+
+def get_result_string_average(the_type, epoch, epochs, loss):
+    if loss == None:
+        result_string = the_type + ': Average: Batch: [{} / {}]' \
+            .format(epoch, epochs, epoch, epochs)
+    else: 
+        result_string = the_type + ': Average: Batch: [{} / {}], Loss {:.4f}' \
+            .format(epoch, epochs, epoch, epochs, loss)
+    return result_string
+
+def get_result_string_norm(loss, mean, median, rmse, d_1125, d_2250, d_30):
+    result_string = 'loss {:.4f}, mean: {:.4f}, median: {:.4f}, rmse: {:.4f}, 11.25: {:.3f}, 22.50: {:.3f}, 30: {:.3f}' \
+        .format(loss, mean, median, rmse, d_1125, d_2250, d_30)
+    return result_string
+    
+def get_result_string_depth(rms, rel, rlog10, delta_1, delta_2, delta_3):
+    result_string = 'rms: {:.4f}, rel: {:.4f}, log10: {:.4f}, delta_1: {:.3f}, delta_2: {:.3f}, delta_3: {:.3f}' \
+        .format(rms, rel, rlog10, delta_1, delta_2, delta_3)
+    return result_string
+
+def get_result_string_seg(loss, acc):
+    result_string = 'loss: {:.4f}, acc: {:.3f}' \
+        .format(loss, acc)
+    return result_string

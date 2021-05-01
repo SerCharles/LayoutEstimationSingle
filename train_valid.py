@@ -36,53 +36,57 @@ def train(args, device, train_loader, model, optimizer, epoch):
         start = time.time()
         if device:
             image = image.cuda()
-            #layout_depth = layout_depth.cuda()
+            layout_depth = layout_depth.cuda()
             init_label = init_label.cuda()
-            #normal = normal.cuda()
+            normal = normal.cuda()
             intrinsic = intrinsic.cuda()
-            #mesh_x = mesh_x.cuda() 
-            #mesh_y = mesh_y.cuda()
+            mesh_x = mesh_x.cuda() 
+            mesh_y = mesh_y.cuda()
         
         batch_size = image.size(0)
-        pixel_num = image.size(2) * image.size(3)
-        #mask = torch.ne(init_label, 0)
+        mask = torch.ne(init_label, 0)
 
-
-        
-        #the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
+        the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
         optimizer.zero_grad()
 
-        output = model(image)
-        accuracy, loss = get_segmentation_loss(output, init_label, args.epsilon)
-        '''
-        output = model(image)
-        loss = ordinal_regression_loss(output, layout_depth, mask, args.ord_num, args.ordinal_beta, args.discretization)
-        '''
-        '''
-        output = model(the_input)
-        output = normalize(output, args.epsilon)
-        loss, loss_per_pixel = get_norm_loss(output, normal, mask)
-        '''
+        output = model(the_input)  
+        seg_result = output[:, 0:2, :, :]
+        norm_result = output[:, 2:5, :, :]
+        depth_result = output[:, 5:, :, :]
+
+        accuracy_seg, loss_seg = get_segmentation_loss(seg_result, init_label, args.epsilon)
+
+        norm_result = normalize(norm_result, args.epsilon)
+        loss_norm = get_norm_loss(norm_result, normal, mask)
+
+        loss_depth = ordinal_regression_loss(depth_result, layout_depth, mask, args.ord_num, args.ordinal_beta, args.discretization)
+        
+        loss = loss_seg * args.weight_seg + loss_norm * args.weight_norm + loss_depth * args.weight_depth
+        
         loss.backward()
         optimizer.step()
 
         
-        #mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(output, normal, args.epsilon, mask)
-        #average_meter_normal.add_batch(batch_size, loss_per_pixel, mean, median, rmse, d_1125, d_2250, d_30)
-        average_meter_seg.add_batch(batch_size, loss.item() / batch_size / pixel_num, accuracy)
+        mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(norm_result, normal, args.epsilon, mask)
+        average_meter_normal.add_batch(batch_size, loss_norm.item(), mean, median, rmse, d_1125, d_2250, d_30)
+
+        average_meter_seg.add_batch(batch_size, loss_seg.item(), accuracy_seg)
         
         end = time.time()
         the_time = end - start
 
-        result_string = get_result_string_total('training', epoch + 1, args.epochs, i + 1, len(train_loader), the_time, None) + '\n'
-        result_string += get_result_string_seg(loss.item() / batch_size / pixel_num, accuracy)
+        result_string = get_result_string_total('training', epoch + 1, args.epochs, i + 1, len(train_loader), the_time, loss.item()) + '\n'
+        result_string += get_result_string_seg(loss_seg.item(), accuracy_seg) + '\n'
+        result_string += get_result_string_norm(loss_norm.item(), mean, median, rmse, d_1125, d_2250, d_30)
         
         print(result_string)
         write_log(args, epoch, i, 'training', result_string)
 
-    avg_loss, avg_acc = average_meter_seg.get_average()
+    avg_loss_seg, avg_acc = average_meter_seg.get_average()
+    avg_loss_normal, avg_mean, avg_median, avg_rmse, avg_d_1125, avg_d_2250, avg_d_30 = average_meter_normal.get_average()
     result_string = get_result_string_average('training', epoch + 1, args.epochs, None) + '\n'
-    result_string += get_result_string_seg(avg_loss, avg_acc)
+    result_string += get_result_string_seg(avg_loss_seg, avg_acc) + '\n'
+    result_string += get_result_string_norm(avg_loss_normal, avg_mean, avg_median, avg_rmse, avg_d_1125, avg_d_2250, avg_d_30)
 
     print(result_string)
     write_log(args, epoch, 1, 'training', result_string)
@@ -107,49 +111,55 @@ def valid(args, device, valid_loader, model, epoch):
 
         if device:
             image = image.cuda()
-            #layout_depth = layout_depth.cuda()
+            layout_depth = layout_depth.cuda()
             init_label = init_label.cuda()
-            #normal = normal.cuda()
+            normal = normal.cuda()
             intrinsic = intrinsic.cuda()
-            #mesh_x = mesh_x.cuda() 
-            #mesh_y = mesh_y.cuda()
+            mesh_x = mesh_x.cuda() 
+            mesh_y = mesh_y.cuda()
         with torch.no_grad():
             batch_size = image.size(0)
-            pixel_num = image.size(2) * image.size(3)
-            #mask = torch.ne(init_label, 0)
+            mask = torch.ne(init_label, 0)
 
-            '''
             the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
             output = model(the_input)
-            output = normalize(output, args.epsilon)
-            loss, loss_per_pixel = get_norm_loss(output, normal, mask)
+            seg_result = output[:, 0:2, :, :]
+            norm_result = output[:, 2:5, :, :]
+            depth_result = output[:, 5:, :, :]
 
-            mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(output, normal, args.epsilon, mask)
-            average_meter_normal.add_batch(batch_size, loss_per_pixel, mean, median, rmse, d_1125, d_2250, d_30)
-            ''' 
-            '''
-            output = model(image)
-            my_depth = get_predicted_depth(output, args.ordinal_beta, args.ordinal_gamma, args.discretization)
+
+
+            accuracy_seg, loss_seg = get_segmentation_loss(seg_result, init_label, args.epsilon)
+            average_meter_seg.add_batch(batch_size, loss_seg.item(), accuracy_seg)
+
+            norm_result = normalize(norm_result, args.epsilon)
+            loss_norm = get_norm_loss(norm_result, normal, mask)
+            mean, median, rmse, d_1125, d_2250, d_30 = norm_metrics(norm_result, normal, args.epsilon, mask)
+            average_meter_normal.add_batch(batch_size, loss_norm.item(), mean, median, rmse, d_1125, d_2250, d_30)
+
+            my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
             rms, rel, rlog10, delta_1, delta_2, delta_3 = depth_metrics(my_depth, layout_depth, mask)
-            average_meter.add_batch(batch_size, rms, rel, rlog10, delta_1, delta_2, delta_3)
-            '''
-            output = model(image)
-            accuracy, loss = get_segmentation_loss(output, init_label, args.epsilon)
-            average_meter_seg.add_batch(batch_size, loss.item() / batch_size / pixel_num, accuracy)
+            average_meter_depth.add_batch(batch_size, rms, rel, rlog10, delta_1, delta_2, delta_3)
 
 
         end = time.time()
         the_time = end - start
 
         result_string = get_result_string_total('validation', epoch + 1, args.epochs, i + 1, len(valid_loader), the_time, None) + '\n'
-        result_string += get_result_string_seg(loss.item() / batch_size / pixel_num, accuracy)
-        
+        result_string += get_result_string_seg(loss_seg.item(), accuracy_seg) + '\n'
+        result_string += get_result_string_norm(loss_norm.item(), mean, median, rmse, d_1125, d_2250, d_30) + '\n'
+        result_string += get_result_string_depth(rms, rel, rlog10, delta_1, delta_2, delta_3)
+
         print(result_string)
         write_log(args, epoch, i, 'validation', result_string)
 
-    avg_loss, avg_acc = average_meter_seg.get_average()
+    avg_loss_seg, avg_acc = average_meter_seg.get_average()
+    avg_loss_normal, avg_mean, avg_median, avg_rmse, avg_d_1125, avg_d_2250, avg_d_30 = average_meter_normal.get_average()
+    avg_rms, avg_rel, avg_log10, avg_delta_1, avg_delta_2, avg_delta_3 = average_meter_depth.get_average()
     result_string = get_result_string_average('validation', epoch + 1, args.epochs, None) + '\n'
-    result_string += get_result_string_seg(avg_loss, avg_acc)
+    result_string += get_result_string_seg(avg_loss_seg, avg_acc) + '\n'
+    result_string += get_result_string_norm(avg_loss_normal, avg_mean, avg_median, avg_rmse, avg_d_1125, avg_d_2250, avg_d_30) + '\n'
+    result_string += get_result_string_depth(avg_rms, avg_rel, avg_log10, avg_delta_1, avg_delta_2, avg_delta_3)
 
     print(result_string)
     write_log(args, epoch, 1, 'validation', result_string)

@@ -43,10 +43,16 @@ def init_args():
     parser.add_argument('--data_dir', default = '/home/shenguanlin/geolayout', type = str)
     parser.add_argument('--save_dir', default = '/home/shenguanlin/geolayout_result', type = str)
     parser.add_argument('--cur_name', default = 'final', type = str)
+
+    #depth
     parser.add_argument('--ord_num', default = 90, type = int)
     parser.add_argument('--ordinal_beta', default = 80.0, type = float)
     parser.add_argument('--ordinal_gamma', default = 1.0, type = float)
     parser.add_argument('--discretization', default = 'UD', type = str)
+
+    parser.add_argument('--weight_seg', default = 1.0, type = float)
+    parser.add_argument('--weight_norm', default = 1.0, type = float)
+    parser.add_argument('--weight_depth', default = 1.0, type = float)
 
     args = parser.parse_args()
     return args
@@ -61,7 +67,7 @@ def save_checkpoint(args, state, epoch):
     file_dir = os.path.join(args.save_dir, args.cur_name)
     if not os.path.exists(file_dir):
         os.mkdir(file_dir)
-    if (epoch + 1) % 100 == 0:
+    if (epoch + 1) % 20 == 0:
         filename = os.path.join(file_dir, 'checkpoint_' + str(epoch + 1) + '.pth')
         torch.save(state, filename)
 
@@ -107,8 +113,7 @@ def init_model(args):
 
     print('Initialize model')
     
-    model = DORN(channel = 3, output_channel = 2)
-    #model = DORN(channel = 3, output_channel = args.ord_num * 2)
+    model = DORN(channel = 5, output_channel = args.ord_num * 2 + 5)
 
 
     if device:

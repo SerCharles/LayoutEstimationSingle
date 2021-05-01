@@ -84,15 +84,15 @@ def get_norm_loss(norm, norm_gt, mask):
     ''' 
     description: get the normal loss 
     parameter: the norm got by us, the norm of the ground truth(both normalized), the mask
-    return: normal loss, loss per pixel
+    return: normal loss
     '''
     batch_size = norm_gt.size(0)
     pixels = torch.sum(mask).float()
     norm_plain = (norm * mask).view(batch_size, -1)
     norm_gt_plain = (norm_gt * mask).view(batch_size, -1)
     loss = torch.sum((norm_plain - norm_gt_plain) ** 2)
-    loss_per_pixel = float(loss / pixels)
-    return loss, loss_per_pixel
+    loss_per_pixel = loss / pixels
+    return loss_per_pixel
 
 
 def get_segmentation_loss(output, init_label, epsilon):
@@ -107,7 +107,7 @@ def get_segmentation_loss(output, init_label, epsilon):
     mask_true = torch.ne(init_label, 0)
     mask_false = ~mask_true 
     one_hot_gt = torch.cat((mask_true, mask_false), dim = 1).float()
-    cross_entropy_loss = -torch.sum(one_hot_gt * torch.log(softmaxed_output + epsilon))
+    cross_entropy_loss = -torch.sum(one_hot_gt * torch.log(softmaxed_output + epsilon)) / total_num
     probability_true = softmaxed_output[:, 0:1, :, :]
     predict_true = probability_true > 0.5
 

@@ -20,8 +20,12 @@ def depth_metrics(depth_map, depth_map_gt, mask):
     parameter: depth map of mine and the ground truth, mask
     return: several metrics, rms, rel, log10, 1.25, 1.25^2, 1.25^3
     '''
+
     batch_size = depth_map_gt.size(0)
     number_by_batch = mask.view(batch_size, -1).sum(dim = 1).float()
+
+    
+
     total_num = mask.float().sum()
     abs_diff = (depth_map - depth_map_gt).abs() * mask
 
@@ -60,6 +64,9 @@ def norm_metrics(norm, norm_gt, epsilon, mask):
     dot_product = torch.sum(norm * norm_gt, dim = 1, keepdim = True) #N * 1 * W * H
     dot = torch.clamp(dot_product, min = -1.0, max = 1.0)
     errors = torch.acos(dot) / np.pi * 180
+
+    if int(torch.sum(mask)) == 0: 
+        return inf, inf, inf, 0.0, 0.0, 0.0
 
     selected_error = torch.masked_select(errors, mask)
 

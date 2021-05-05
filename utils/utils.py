@@ -91,7 +91,7 @@ def get_norm_loss(norm, norm_gt, mask):
     norm_plain = (norm * mask).view(batch_size, -1)
     norm_gt_plain = (norm_gt * mask).view(batch_size, -1)
     loss = torch.sum((norm_plain - norm_gt_plain) ** 2)
-    loss_per_pixel = loss / pixels
+    loss_per_pixel = loss / (pixels + torch.eq(pixels, 0))
     return loss_per_pixel
 
 
@@ -99,7 +99,7 @@ def get_segmentation_loss(output, init_label, epsilon):
     ''' 
     description: get the segmentation accuracy and cross entropy loss
     parameter: the output, the ground truth segmentation
-    return: accuracy, loss
+    return: accuracy, loss, the prediction
     '''
     N, C, H, W = init_label.size()
     total_num = N * H * W
@@ -112,4 +112,4 @@ def get_segmentation_loss(output, init_label, epsilon):
     predict_true = probability_true > 0.5
 
     accuracy = float((predict_true == mask_true).float().sum() / total_num)
-    return accuracy, cross_entropy_loss
+    return accuracy, cross_entropy_loss, predict_true

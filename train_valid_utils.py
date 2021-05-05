@@ -50,9 +50,11 @@ def init_args():
     parser.add_argument('--ordinal_gamma', default = 1.0, type = float)
     parser.add_argument('--discretization', default = 'UD', type = str)
 
-    parser.add_argument('--weight_seg', default = 1.0, type = float)
-    parser.add_argument('--weight_norm', default = 1.0, type = float)
-    parser.add_argument('--weight_depth', default = 1.0, type = float)
+    parser.add_argument('--weight_seg', default = 2.0, type = float)
+    parser.add_argument('--weight_norm_gt', default = 1.0, type = float)
+    parser.add_argument('--weight_norm_mine', default = 1.0, type = float)
+    parser.add_argument('--weight_depth_gt', default = 1.0, type = float)
+    parser.add_argument('--weight_depth_mine', default = 1.0, type = float)
 
     args = parser.parse_args()
     return args

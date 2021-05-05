@@ -74,7 +74,7 @@ class PlotCurves:
                 {"train_all" : train_loss[epoch], "train_seg" : train_loss_seg[epoch], "train_norm_gt": train_loss_norm_gt[epoch], \
                     "train_norm_mine": train_loss_norm_mine[epoch], "train_depth_gt": train_loss_depth_gt[epoch], "train_depth_mine": train_loss_depth_mine[epoch], \
                     "valid_all" : valid_loss[epoch], "valid_seg" : valid_loss_seg[epoch], "valid_norm_gt": valid_loss_norm_gt[epoch], \
-                    "valid_norm_mine": valid_loss_norm_mine[epoch], "valid_depth_gt": valid_loss_depth_gt[epoch], "valid_depth_mine": train_loss_depth_mine[epoch]}, epoch)
+                    "valid_norm_mine": valid_loss_norm_mine[epoch], "valid_depth_gt": valid_loss_depth_gt[epoch], "valid_depth_mine": valid_loss_depth_mine[epoch]}, epoch)
         writer.close()    
         
     def plot_one(self, train_loss, valid_loss):

@@ -29,35 +29,6 @@ def normalize(norm, epsilon):
     return norm
 
 
-def ordinal_regression_loss(predict_result, gt, useful_mask, ord_num, beta, discretization):
-    ''' 
-    description: get the ordinal regression loss, used only in training
-    parameter: the prediction calculated by the network, the ground truth label of pictures, the useful masks, other hyperparameters
-    return: the regrssion loss
-    '''
-    N, C, H, W = gt.shape
-    predict_result = predict_result.view(N, 2, ord_num, H, W)
-    prob = F.log_softmax(predict_result, dim = 1).view(N, 2 * ord_num, H, W)
-
-    ord_c0 = torch.ones(N, ord_num, H, W).to(gt.device)
-    if discretization == "SID":
-        label = ord_num * torch.log(gt) / np.log(beta)
-    else:
-        label = ord_num * (gt - 1.0) / (beta - 1.0)
-
-    label = label.long()
-    mask = torch.linspace(0, ord_num - 1, ord_num, requires_grad = False) \
-        .view(1, ord_num, 1, 1).to(gt.device)
-    mask = mask.repeat(N, 1, H, W).contiguous().long()
-    mask = (mask > label)
-    ord_c0[mask] = 0
-    ord_c1 = 1 - ord_c0
-    ord_label = torch.cat((ord_c0, ord_c1), dim = 1)
-
-    entropy = -prob * ord_label * useful_mask
-    loss = torch.sum(entropy, dim = 1).mean()
-    return loss
-
 def get_predicted_depth(predicted_result, beta, gamma, discretization):
     ''' 
     description: get depth based on the predicted result, used in validation
@@ -80,36 +51,101 @@ def get_predicted_depth(predicted_result, beta, gamma, discretization):
     depth = depth.view(N, 1, H, W)
     return depth
 
-def get_norm_loss(norm, norm_gt, mask):
-    ''' 
-    description: get the normal loss 
-    parameter: the norm got by us, the norm of the ground truth(both normalized), the mask
-    return: normal loss
+
+
+
+def get_plane_info_per_pixel(norm, depth, intrinsic):
     '''
-    batch_size = norm_gt.size(0)
-    pixels = torch.sum(mask).float()
-    norm_plain = (norm * mask).view(batch_size, -1)
-    norm_gt_plain = (norm_gt * mask).view(batch_size, -1)
-    loss = torch.sum((norm_plain - norm_gt_plain) ** 2)
-    loss_per_pixel = loss / (pixels + torch.eq(pixels, 0))
-    return loss_per_pixel
-
-
-def get_segmentation_loss(output, init_label, epsilon):
-    ''' 
-    description: get the segmentation accuracy and cross entropy loss
-    parameter: the output, the ground truth segmentation
-    return: accuracy, loss, the prediction
+    description: calculate the plane info based on the norm, depth and intrinsic we get
+    parameter: the norm, depth, intrinsic
+    return: plane info(A, B, C, D) per pixel
     '''
-    N, C, H, W = init_label.size()
-    total_num = N * H * W
-    softmaxed_output = F.softmax(output, dim = 1) 
-    mask_true = torch.ne(init_label, 0)
-    mask_false = ~mask_true 
-    one_hot_gt = torch.cat((mask_true, mask_false), dim = 1).float()
-    cross_entropy_loss = -torch.sum(one_hot_gt * torch.log(softmaxed_output + epsilon)) / total_num
-    probability_true = softmaxed_output[:, 0:1, :, :]
-    predict_true = probability_true > 0.5
+    N, C, W, H  = norm.size()
+    xx, yy = np.meshgrid(np.array([ii for ii in range(H)]), np.array([ii for ii in range(W)]))
+    xx = xx.reshape(1, 1, W, H).repeat(N, 1, 1, 1)
+    yy = yy.reshape(1, 1, W, H).repeat(N, 1, 1, 1)
+    fx = intrinsic[0][0]
+    fy = intrinsic[1][1]
+    x0 = intrinsic[2][0]
+    y0 = intrinsic[2][1]
+    x = ((xx - x0) / fx) * depth 
+    y = ((yy - y0) / fy) * depth 
+    A = norm[:, 0:1, :, :]
+    B = norm[:, 1:2, :, :]
+    C = norm[:, 2:3, :, :]
+    D = - A * x - B * y - C * depth 
+    plane_info = torch.cat((A, B, C, D), dim = 1)
+    return plane_info
 
-    accuracy = float((predict_true == mask_true).float().sum() / total_num)
-    return accuracy, cross_entropy_loss, predict_true
+
+def get_plane_max_num(plane_seg):
+    '''
+    description: get the plane ids
+    parameter: plane seg map
+    return: the max num of planes
+    '''
+    max_num = torch.max(plane_seg)
+    max_num = max_num.detach()
+    return max_num
+
+def get_average_plane_info(device, parameters, plane_seg, max_num):
+    '''
+    description: get the average plane info 
+    parameter: device, parameters per pixel, plane segmentation per pixel, the max segmentation num of planes
+    return: average plane info
+    '''
+    batch_size = plane_seg.size(0)
+    size_v = plane_seg.size(2)
+    size_u = plane_seg.size(3)
+    average_paramaters = []
+    
+    for batch in range(batch_size):
+        the_parameter = parameters[batch]
+        average_paramaters.append([])
+        for i in range(0, max_num + 1):
+            the_mask = torch.eq(plane_seg[batch], i) #选择所有seg和i相等的像素
+            the_mask = the_mask.detach()
+
+            the_total = torch.sum(the_parameter * the_mask, dim = [1, 2]) #对每个图符合条件的求和
+            the_count = torch.sum(the_mask) #求和
+            new_count = the_count + torch.eq(the_count, 0) #trick，如果count=0，mask=1，加上变成1(但是total=0，结果还是0)
+            new_count = new_count.detach()
+
+
+            
+            average_paramaters[batch].append((the_total / new_count).unsqueeze(0))
+        average_paramaters[batch] = torch.cat(average_paramaters[batch], dim = 0).unsqueeze(0)
+    average_paramaters = torch.cat(average_paramaters)
+    return average_paramaters
+
+def set_average_plane_info(plane_seg, average_plane_info):
+    '''
+    description: set the per pixel plane info to the average
+    parameter: the plane ids, plane_segs, the average plane infos, the shape of the depth map
+    return: average per pixel plane info
+    '''
+    batch_size = len(plane_seg)
+    size_v = len(plane_seg[0][0])
+    size_u = len(plane_seg[0][0][0])
+    new_paramater = []
+    for i in range(batch_size):
+        new_paramater.append([])
+        for the_id in range(len(average_plane_info[i])):
+            the_id = int(the_id) 
+            mask = torch.eq(plane_seg[i][0], the_id)
+            mask = mask.detach()
+            a = average_plane_info[i][the_id][0]
+            b = average_plane_info[i][the_id][1]
+            c = average_plane_info[i][the_id][2]
+            d = average_plane_info[i][the_id][3]
+            masked_a = (mask * a).unsqueeze(0)
+            masked_b = (mask * b).unsqueeze(0)
+            masked_c = (mask * c).unsqueeze(0)
+            masked_d = (mask * d).unsqueeze(0)
+            the_parameter = torch.cat([masked_a, masked_b, masked_c, masked_d]).unsqueeze(0)
+            new_paramater[i].append(the_parameter)
+
+        new_paramater[i] = torch.cat(new_paramater[i])
+        new_paramater[i] = torch.sum(new_paramater[i], dim = 0, keepdim = True)
+    new_paramater = torch.cat(new_paramater)
+    return new_paramater

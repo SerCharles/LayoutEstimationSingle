@@ -88,7 +88,7 @@ def get_plane_max_num(plane_seg):
     max_num = max_num.detach()
     return max_num
 
-def get_average_plane_info(device, parameters, plane_seg, max_num):
+def get_average_plane_info(device, plane_infos, plane_seg, max_num):
     '''
     description: get the average plane info 
     parameter: device, parameters per pixel, plane segmentation per pixel, the max segmentation num of planes
@@ -97,26 +97,26 @@ def get_average_plane_info(device, parameters, plane_seg, max_num):
     batch_size = plane_seg.size(0)
     size_v = plane_seg.size(2)
     size_u = plane_seg.size(3)
-    average_paramaters = []
+    average_plane_infos = []
     
     for batch in range(batch_size):
-        the_parameter = parameters[batch]
-        average_paramaters.append([])
+        the_plane_info = plane_infos[batch]
+        average_plane_infos.append([])
         for i in range(0, max_num + 1):
             the_mask = torch.eq(plane_seg[batch], i) #选择所有seg和i相等的像素
             the_mask = the_mask.detach()
 
-            the_total = torch.sum(the_parameter * the_mask, dim = [1, 2]) #对每个图符合条件的求和
+            the_total = torch.sum(the_plane_info * the_mask, dim = [1, 2]) #对每个图符合条件的求和
             the_count = torch.sum(the_mask) #求和
             new_count = the_count + torch.eq(the_count, 0) #trick，如果count=0，mask=1，加上变成1(但是total=0，结果还是0)
             new_count = new_count.detach()
 
 
             
-            average_paramaters[batch].append((the_total / new_count).unsqueeze(0))
-        average_paramaters[batch] = torch.cat(average_paramaters[batch], dim = 0).unsqueeze(0)
-    average_paramaters = torch.cat(average_paramaters)
-    return average_paramaters
+            average_plane_infos[batch].append((the_total / new_count).unsqueeze(0))
+        average_plane_infos[batch] = torch.cat(average_plane_infos[batch], dim = 0).unsqueeze(0)
+    average_plane_infos = torch.cat(average_plane_infos)
+    return average_plane_infos
 
 def set_average_plane_info(plane_seg, average_plane_info):
     '''
@@ -127,9 +127,9 @@ def set_average_plane_info(plane_seg, average_plane_info):
     batch_size = len(plane_seg)
     size_v = len(plane_seg[0][0])
     size_u = len(plane_seg[0][0][0])
-    new_paramater = []
+    new_plane_infos = []
     for i in range(batch_size):
-        new_paramater.append([])
+        new_plane_infos.append([])
         for the_id in range(len(average_plane_info[i])):
             the_id = int(the_id) 
             mask = torch.eq(plane_seg[i][0], the_id)
@@ -142,10 +142,10 @@ def set_average_plane_info(plane_seg, average_plane_info):
             masked_b = (mask * b).unsqueeze(0)
             masked_c = (mask * c).unsqueeze(0)
             masked_d = (mask * d).unsqueeze(0)
-            the_parameter = torch.cat([masked_a, masked_b, masked_c, masked_d]).unsqueeze(0)
-            new_paramater[i].append(the_parameter)
+            the_plane_info = torch.cat([masked_a, masked_b, masked_c, masked_d]).unsqueeze(0)
+            new_plane_infos[i].append(the_plane_info)
 
-        new_paramater[i] = torch.cat(new_paramater[i])
-        new_paramater[i] = torch.sum(new_paramater[i], dim = 0, keepdim = True)
-    new_paramater = torch.cat(new_paramater)
-    return new_paramater
+        new_plane_infos[i] = torch.cat(new_plane_infos[i])
+        new_plane_infos[i] = torch.sum(new_plane_infos[i], dim = 0, keepdim = True)
+    new_plane_infos = torch.cat(new_plane_infos)
+    return new_plane_infos

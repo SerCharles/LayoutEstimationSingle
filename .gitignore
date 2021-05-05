@@ -18,6 +18,7 @@ PA3_RayTracing/bin
 *.userprefs
 *.log
 *.ply
+runs
 
 # Build results
 [Dd]ebug/

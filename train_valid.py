@@ -17,6 +17,7 @@ from data.dataset import *
 from models.dorn import * 
 from train_valid_utils import *
 from utils.utils import *
+from utils.loss import *
 from utils.metrics import *
 from utils.average_meters import *
 
@@ -34,6 +35,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
     average_meter_normal_mine = AverageMeterNorm()
     average_meter_depth_gt = AverageMeterDepth()
     average_meter_depth_mine = AverageMeterDepth()
+    average_meter_discrimitive = AverageMeterDiscrimitive()
     total_loss = 0.0
     total_num = 0
     for i, (image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
@@ -80,7 +82,18 @@ def train(args, device, train_loader, model, optimizer, epoch):
         average_meter_depth_mine.add_batch(batch_size, loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine)
         loss_depth = loss_depth_gt + loss_depth_mine
 
-        loss = loss_seg + loss_norm + loss_depth
+        plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
+        plane_max_num = get_plane_max_num(init_label)
+        average_plane_info = get_average_plane_info(device, plane_info_per_pixel, init_label, plane_max_num)
+        #average_plane_info_per_pixel = set_average_plane_info(init_label, average_plane_info)
+        loss_l, loss_d = get_discrimitive_loss(device, plane_info_per_pixel, init_label, average_plane_info, args.delta_v, args.delta_d)
+        loss_l = loss_l * args.weight_discrimitive
+        loss_d = loss_d * args.weight_discrimitive
+        loss_discrimitive = loss_l + loss_d
+        average_meter_discrimitive.add_batch(batch_size, loss_discrimitive.item(), loss_l.item(), loss_d.item())
+
+
+        loss = loss_seg + loss_norm + loss_depth + loss_discrimitive
         total_loss += loss.item() * batch_size
         total_num += batch_size
         loss.backward()
@@ -95,8 +108,8 @@ def train(args, device, train_loader, model, optimizer, epoch):
         result_string += get_result_string_norm(loss_norm_gt.item(), mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt) + '\n'
         result_string += get_result_string_norm(loss_norm_mine.item(), mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine) + '\n'
         result_string += get_result_string_depth(loss_depth_gt.item(), rms_gt, rel_gt, rlog10_gt, delta_1_gt, delta_2_gt, delta_3_gt) + '\n'
-        result_string += get_result_string_depth(loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine)
-
+        result_string += get_result_string_depth(loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine) + '\n'
+        result_string += get_result_string_discrimitive(loss_discrimitive.item(), loss_l.item(), loss_d.item())
         print(result_string)
         write_log(args, epoch, i, 'training', result_string)
     avg_loss = total_loss / total_num
@@ -105,14 +118,15 @@ def train(args, device, train_loader, model, optimizer, epoch):
     avg_loss_normal_mine, avg_mean_mine, avg_median_mine, avg_rmse_mine, avg_d_1125_mine, avg_d_2250_mine, avg_d_30_mine = average_meter_normal_mine.get_average()
     avg_loss_depth_gt, avg_rms_gt, avg_rel_gt, avg_log10_gt, avg_delta_1_gt, avg_delta_2_gt, avg_delta_3_gt = average_meter_depth_gt.get_average()
     avg_loss_depth_mine, avg_rms_mine, avg_rel_mine, avg_log10_mine, avg_delta_1_mine, avg_delta_2_mine, avg_delta_3_mine = average_meter_depth_mine.get_average()
+    avg_loss_discrimitive, avg_loss_l, avg_loss_d = average_meter_discrimitive.get_average()
 
     result_string = get_result_string_average('training', epoch + 1, args.epochs, avg_loss) + '\n'
     result_string += get_result_string_seg(avg_loss_seg, avg_acc) + '\n'
     result_string += get_result_string_norm(avg_loss_normal_gt, avg_mean_gt, avg_median_gt, avg_rmse_gt, avg_d_1125_gt, avg_d_2250_gt, avg_d_30_gt) + '\n'
     result_string += get_result_string_norm(avg_loss_normal_mine, avg_mean_mine, avg_median_mine, avg_rmse_mine, avg_d_1125_mine, avg_d_2250_mine, avg_d_30_mine) + '\n'
     result_string += get_result_string_depth(avg_loss_depth_gt, avg_rms_gt, avg_rel_gt, avg_log10_gt, avg_delta_1_gt, avg_delta_2_gt, avg_delta_3_gt) + '\n'
-    result_string += get_result_string_depth(avg_loss_depth_mine, avg_rms_mine, avg_rel_mine, avg_log10_mine, avg_delta_1_mine, avg_delta_2_mine, avg_delta_3_mine)
-
+    result_string += get_result_string_depth(avg_loss_depth_mine, avg_rms_mine, avg_rel_mine, avg_log10_mine, avg_delta_1_mine, avg_delta_2_mine, avg_delta_3_mine) + '\n'
+    result_string += get_result_string_discrimitive(avg_loss_discrimitive, avg_loss_l, avg_loss_d)
     print(result_string)
     write_log(args, epoch, 1, 'training', result_string)
 
@@ -132,6 +146,8 @@ def valid(args, device, valid_loader, model, epoch):
     average_meter_normal_mine = AverageMeterNorm()
     average_meter_depth_gt = AverageMeterDepth()
     average_meter_depth_mine = AverageMeterDepth()
+    average_meter_discrimitive = AverageMeterDiscrimitive()
+
     total_loss = 0.0
     total_num = 0
     for i, (image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
@@ -177,7 +193,17 @@ def valid(args, device, valid_loader, model, epoch):
             average_meter_depth_mine.add_batch(batch_size, loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine)
             loss_depth = loss_depth_gt + loss_depth_mine
 
-            loss = loss_seg + loss_norm + loss_depth
+            plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
+            plane_max_num = get_plane_max_num(init_label)
+            average_plane_info = get_average_plane_info(device, plane_info_per_pixel, init_label, plane_max_num)
+            #average_plane_info_per_pixel = set_average_plane_info(init_label, average_plane_info)
+            loss_l, loss_d = get_discrimitive_loss(device, plane_info_per_pixel, init_label, average_plane_info, args.delta_v, args.delta_d)
+            loss_l = loss_l * args.weight_discrimitive
+            loss_d = loss_d * args.weight_discrimitive
+            loss_discrimitive = loss_l + loss_d
+            average_meter_discrimitive.add_batch(batch_size, loss_discrimitive.item(), loss_l.item(), loss_d.item())
+
+            loss = loss_seg + loss_norm + loss_depth + loss_discrimitive
             total_loss += loss.item() * batch_size
             total_num += batch_size
 
@@ -190,8 +216,8 @@ def valid(args, device, valid_loader, model, epoch):
         result_string += get_result_string_norm(loss_norm_gt.item(), mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt) + '\n'
         result_string += get_result_string_norm(loss_norm_mine.item(), mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine) + '\n'
         result_string += get_result_string_depth(loss_depth_gt.item(), rms_gt, rel_gt, rlog10_gt, delta_1_gt, delta_2_gt, delta_3_gt) + '\n'
-        result_string += get_result_string_depth(loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine)
-
+        result_string += get_result_string_depth(loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine) + '\n'
+        result_string += get_result_string_discrimitive(avg_loss_discrimitive, avg_loss_l, avg_loss_d)
 
         print(result_string)
         write_log(args, epoch, i, 'validation', result_string)
@@ -202,13 +228,15 @@ def valid(args, device, valid_loader, model, epoch):
     avg_loss_normal_mine, avg_mean_mine, avg_median_mine, avg_rmse_mine, avg_d_1125_mine, avg_d_2250_mine, avg_d_30_mine = average_meter_normal_mine.get_average()
     avg_loss_depth_gt, avg_rms_gt, avg_rel_gt, avg_log10_gt, avg_delta_1_gt, avg_delta_2_gt, avg_delta_3_gt = average_meter_depth_gt.get_average()
     avg_loss_depth_mine, avg_rms_mine, avg_rel_mine, avg_log10_mine, avg_delta_1_mine, avg_delta_2_mine, avg_delta_3_mine = average_meter_depth_mine.get_average()
+    avg_loss_discrimitive, avg_loss_l, avg_loss_d = average_meter_discrimitive.get_average()
 
     result_string = get_result_string_average('validation', epoch + 1, args.epochs, avg_loss) + '\n'
     result_string += get_result_string_seg(avg_loss_seg, avg_acc) + '\n'
     result_string += get_result_string_norm(avg_loss_normal_gt, avg_mean_gt, avg_median_gt, avg_rmse_gt, avg_d_1125_gt, avg_d_2250_gt, avg_d_30_gt) + '\n'
     result_string += get_result_string_norm(avg_loss_normal_mine, avg_mean_mine, avg_median_mine, avg_rmse_mine, avg_d_1125_mine, avg_d_2250_mine, avg_d_30_mine) + '\n'
     result_string += get_result_string_depth(avg_loss_depth_gt, avg_rms_gt, avg_rel_gt, avg_log10_gt, avg_delta_1_gt, avg_delta_2_gt, avg_delta_3_gt) + '\n'
-    result_string += get_result_string_depth(avg_loss_depth_mine, avg_rms_mine, avg_rel_mine, avg_log10_mine, avg_delta_1_mine, avg_delta_2_mine, avg_delta_3_mine)
+    result_string += get_result_string_depth(avg_loss_depth_mine, avg_rms_mine, avg_rel_mine, avg_log10_mine, avg_delta_1_mine, avg_delta_2_mine, avg_delta_3_mine) + '\n'
+    result_string += get_result_string_discrimitive(avg_loss_discrimitive, avg_loss_l, avg_loss_d)
 
     print(result_string)
     write_log(args, epoch, 1, 'validation', result_string)

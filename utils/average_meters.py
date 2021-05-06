@@ -85,6 +85,24 @@ class AverageMeterSeg(object):
         avg_acc = self.total_acc / self.total_num
         return avg_loss, avg_acc
 
+class AverageMeterDiscrimitive(object):
+    def __init__(self):
+        self.total_num = 0
+        self.total_loss = 0
+        self.total_loss_l = 0
+        self.total_loss_d = 0
+    
+    def add_batch(self, length, loss, loss_l, loss_d):
+        self.total_num += length 
+        self.total_loss += length * loss 
+        self.total_loss_l += length * loss_l
+        self.total_loss_d += length * loss_d
+
+    def get_average(self):
+        avg_loss = self.total_loss / self.total_num 
+        avg_loss_l = self.total_loss_l / self.total_num 
+        avg_loss_d = self.total_loss_d / self.total_num 
+        return avg_loss, avg_loss_l, avg_loss_d
 
 def get_result_string_total(the_type, epoch, epochs, batch, batchs, time, loss):
     if loss == None:
@@ -98,10 +116,10 @@ def get_result_string_total(the_type, epoch, epochs, batch, batchs, time, loss):
 def get_result_string_average(the_type, epoch, epochs, loss):
     if loss == None:
         result_string = the_type + ': Average: Batch: [{} / {}]' \
-            .format(epoch, epochs, epoch, epochs)
+            .format(epoch, epochs)
     else: 
         result_string = the_type + ': Average: Batch: [{} / {}], Loss {:.4f}' \
-            .format(epoch, epochs, epoch, epochs, loss)
+            .format(epoch, epochs, loss)
     return result_string
 
 def get_result_string_norm(loss, mean, median, rmse, d_1125, d_2250, d_30):
@@ -117,4 +135,8 @@ def get_result_string_depth(loss, rms, rel, rlog10, delta_1, delta_2, delta_3):
 def get_result_string_seg(loss, acc):
     result_string = 'loss: {:.4f}, acc: {:.3f}' \
         .format(loss, acc)
+    return result_string
+
+def get_result_string_discrimitive(loss, loss_l, loss_d):
+    result_string = 'loss: {:.4f}, loss_l: {:.4f}, loss_d: {:.4f}'.format(loss, loss_l, loss_d)
     return result_string

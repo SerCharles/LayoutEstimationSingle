@@ -72,12 +72,12 @@ def get_segmentation_loss(output, init_label, epsilon):
     accuracy = float((predict_true == mask_true).float().sum() / total_num)
     return accuracy, cross_entropy_loss, predict_true
 
-def discrimitive_loss(plane_infos, plane_seg_gt, average_plane_info, delta_v, delta_d):
+def get_discrimitive_loss(device, plane_infos, plane_seg_gt, average_plane_info, delta_v, delta_d):
     '''
     description: get the discrimitive loss 
     parameter: the parameter driven by our model, the ground truth segmentation, the ground truth plane id
         the average plane info, threshold of the same plane, threshold of different planes
-    return: depth loss
+    return: loss l, loss d
     '''
     batch_size = len(plane_seg_gt)
     max_num = len(average_plane_info[0])
@@ -89,7 +89,10 @@ def discrimitive_loss(plane_infos, plane_seg_gt, average_plane_info, delta_v, de
         b = plane_infos[i][1]
         c = plane_infos[i][2]
         d = plane_infos[i][3]
-        useful_mask = []
+        zero = torch.zeros((1))
+        if device:
+            zero = zero.cuda()
+        useful_mask = [zero]
 
         current_lvar = []
         for seg_id in range(1, max_num):
@@ -102,7 +105,7 @@ def discrimitive_loss(plane_infos, plane_seg_gt, average_plane_info, delta_v, de
             db_total = mask * torch.abs(b - average_plane_info[i][seg_id][1])
             dc_total = mask * torch.abs(c - average_plane_info[i][seg_id][2])
             dd_total = mask * torch.abs(d - average_plane_info[i][seg_id][3])
-            loss_total = torch.clamp(dp_total + dq_total + dr_total + ds_total - delta_v, min = 0)
+            loss_total = torch.clamp(da_total + db_total + dc_total + dd_total - delta_v, min = 0)
             mask_auxiliary = torch.eq(count, 0) #trick
             new_count = count + mask_auxiliary
             new_count = new_count.detach()
@@ -142,6 +145,7 @@ def discrimitive_loss(plane_infos, plane_seg_gt, average_plane_info, delta_v, de
     lvar = torch.cat(lvar)
     dvar = torch.cat(dvar)
 
-    total_loss = (lvar + dvar).sum() / batch_size
+    loss_l = lvar.sum() / batch_size
+    loss_d = dvar.sum() / batch_size
 
-    return total_loss
+    return loss_l, loss_d

@@ -44,18 +44,23 @@ def init_args():
     parser.add_argument('--save_dir', default = '/home/shenguanlin/geolayout_result', type = str)
     parser.add_argument('--cur_name', default = 'final', type = str)
 
+    #weight
+    parser.add_argument('--weight_seg', default = 1.0, type = float)
+    parser.add_argument('--weight_norm_gt', default = 0.5, type = float)
+    parser.add_argument('--weight_norm_mine', default = 0.5, type = float)
+    parser.add_argument('--weight_depth_gt', default = 0.5, type = float)
+    parser.add_argument('--weight_depth_mine', default = 0.5, type = float)
+    parser.add_argument('--weight_discrimitive', default = 1.0, type = float)
+
     #depth
     parser.add_argument('--ord_num', default = 90, type = int)
     parser.add_argument('--ordinal_beta', default = 80.0, type = float)
     parser.add_argument('--ordinal_gamma', default = 1.0, type = float)
     parser.add_argument('--discretization', default = 'UD', type = str)
 
-    parser.add_argument('--weight_seg', default = 2.0, type = float)
-    parser.add_argument('--weight_norm_gt', default = 1.0, type = float)
-    parser.add_argument('--weight_norm_mine', default = 1.0, type = float)
-    parser.add_argument('--weight_depth_gt', default = 1.0, type = float)
-    parser.add_argument('--weight_depth_mine', default = 1.0, type = float)
-
+    #discrimitive_loss
+    parser.add_argument('--delta_v', default = 0.1, type = float)
+    parser.add_argument('--delta_d', default = 1.0, type = float)
     args = parser.parse_args()
     return args
 

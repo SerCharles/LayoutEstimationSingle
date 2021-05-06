@@ -54,20 +54,26 @@ def get_predicted_depth(predicted_result, beta, gamma, discretization):
 
 
 
-def get_plane_info_per_pixel(norm, depth, intrinsic):
+def get_plane_info_per_pixel(device, norm, depth, intrinsic):
     '''
     description: calculate the plane info based on the norm, depth and intrinsic we get
-    parameter: the norm, depth, intrinsic
+    parameter: device, the norm, depth, intrinsic
     return: plane info(A, B, C, D) per pixel
     '''
     N, C, W, H  = norm.size()
     xx, yy = np.meshgrid(np.array([ii for ii in range(H)]), np.array([ii for ii in range(W)]))
-    xx = xx.reshape(1, 1, W, H).repeat(N, 1, 1, 1)
-    yy = yy.reshape(1, 1, W, H).repeat(N, 1, 1, 1)
-    fx = intrinsic[0][0]
-    fy = intrinsic[1][1]
-    x0 = intrinsic[2][0]
-    y0 = intrinsic[2][1]
+    xx = torch.from_numpy(xx)
+    yy = torch.from_numpy(yy)
+    if device:
+        xx = xx.cuda()
+        yy = yy.cuda()
+    
+    xx = xx.view(1, 1, W, H).repeat(N, 1, 1, 1)
+    yy = yy.view(1, 1, W, H).repeat(N, 1, 1, 1)
+    fx = intrinsic[:, 0, 0].view(N, 1, 1, 1).repeat(1, 1, W, H)
+    fy = intrinsic[:, 1, 1].view(N, 1, 1, 1).repeat(1, 1, W, H)
+    x0 = intrinsic[:, 2, 0].view(N, 1, 1, 1).repeat(1, 1, W, H)
+    y0 = intrinsic[:, 2, 1].view(N, 1, 1, 1).repeat(1, 1, W, H)
     x = ((xx - x0) / fx) * depth 
     y = ((yy - y0) / fy) * depth 
     A = norm[:, 0:1, :, :]

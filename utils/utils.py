@@ -14,6 +14,20 @@ from torchvision import transforms
 import torch.nn.functional as F
 
 
+def get_seg(output):
+    ''' 
+    description: get the segmentation
+    parameter: the output
+    return: the predicted seg
+    '''
+    N, C, H, W = output.size()
+    total_num = N * H * W
+    softmaxed_output = F.softmax(output, dim = 1) 
+    probability_true = softmaxed_output[:, 0:1, :, :]
+    predict_true = probability_true > 0.5
+
+    return predict_true
+
 def normalize(norm, epsilon):
     ''' 
     description: normalize the normal vector 

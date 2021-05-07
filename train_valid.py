@@ -217,7 +217,7 @@ def valid(args, device, valid_loader, model, epoch):
         result_string += get_result_string_norm(loss_norm_mine.item(), mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine) + '\n'
         result_string += get_result_string_depth(loss_depth_gt.item(), rms_gt, rel_gt, rlog10_gt, delta_1_gt, delta_2_gt, delta_3_gt) + '\n'
         result_string += get_result_string_depth(loss_depth_mine.item(), rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine) + '\n'
-        result_string += get_result_string_discrimitive(avg_loss_discrimitive, avg_loss_l, avg_loss_d)
+        result_string += get_result_string_discrimitive(loss_discrimitive.item(), loss_l.item(), loss_d.item())
 
         print(result_string)
         write_log(args, epoch, i, 'validation', result_string)
@@ -241,4 +241,3 @@ def valid(args, device, valid_loader, model, epoch):
     print(result_string)
     write_log(args, epoch, 1, 'validation', result_string)
     save_checkpoint(args, model.state_dict(), epoch)
- 

@@ -61,6 +61,10 @@ def init_args():
     #discrimitive_loss
     parser.add_argument('--delta_v', default = 0.1, type = float)
     parser.add_argument('--delta_d', default = 1.0, type = float)
+
+    #post process
+    parser.add_argument('--threshold', default = 0.05, type = float)
+
     args = parser.parse_args()
     return args
 
@@ -74,7 +78,7 @@ def save_checkpoint(args, state, epoch):
     file_dir = os.path.join(args.save_dir, args.cur_name)
     if not os.path.exists(file_dir):
         os.mkdir(file_dir)
-    if (epoch + 1) % 20 == 0:
+    if (epoch + 1) % 50 == 0:
         filename = os.path.join(file_dir, 'checkpoint_' + str(epoch + 1) + '.pth')
         torch.save(state, filename)
 
@@ -148,3 +152,51 @@ def init_model(args):
     print('Data got!')
 
     return device, dataloader_training, dataloader_validation, model, optimizer, args.start_epoch
+
+def init_valid_model(args):
+    '''
+    description: init the device, dataloader, model, optimizer of the model for validation
+    parameter: args
+    return: device, dataloader_valid, model,
+    '''
+    print(args)
+    print('getting device...')
+    torch.manual_seed(args.seed)
+    if args.cuda == 1:
+        device = True
+        
+        '''
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3) + \
+        ',' + str(args.gpu_id + 4) + ',' + str(args.gpu_id + 5) + ',' + str(args.gpu_id + 6) + ',' + str(args.gpu_id + 7)+ ',' + str(args.gpu_id + 8)
+        '''
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3)
+    else:
+        device = False
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
+    #print(device)
+
+    print('Initialize model')
+    
+    model = DORN(channel = 5, output_channel = args.ord_num * 2 + 5)
+
+
+    if device:
+        if args.parallel: 
+            #model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).cuda()
+            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3]).cuda()
+        else: 
+            model = model.cuda()
+
+    file_dir = os.path.join(args.save_dir, args.cur_name)
+    filename = os.path.join(file_dir, 'checkpoint_' + str(args.epochs) + '.pth')
+    model.load_state_dict(torch.load(filename))
+
+
+
+    print('Getting dataset')
+    dataset_validation = MatterPortDataSet(args.data_dir, 'validation')
+    dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = False, num_workers = 2)
+    print('Data got!')
+
+    return device, dataloader_validation, model

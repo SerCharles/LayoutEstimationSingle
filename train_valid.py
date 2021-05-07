@@ -38,7 +38,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
     average_meter_discrimitive = AverageMeterDiscrimitive()
     total_loss = 0.0
     total_num = 0
-    for i, (image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
+    for i, (image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
         start = time.time()
         if device:
             image = image.cuda()
@@ -150,7 +150,7 @@ def valid(args, device, valid_loader, model, epoch):
 
     total_loss = 0.0
     total_num = 0
-    for i, (image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
+    for i, (image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
         start = time.time()
 
         if device:

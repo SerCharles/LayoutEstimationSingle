@@ -24,7 +24,7 @@ def main():
     device, dataset_validation, model = init_valid_model(args)
     model.eval()
 
-    for i, (image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(dataset_validation):
+    for i, (image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(dataset_validation):
         if device:
             image = image.cuda()
             layout_depth = layout_depth.cuda()
@@ -48,7 +48,10 @@ def main():
             my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
             plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
 
-            post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
+            my_seg = post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
+            layout_seg = layout_seg.cpu().numpy()
+            accuracy = seg_metrics(my_seg, layout_seg)
+            print(accuracy)
 
 
 

@@ -195,6 +195,7 @@ class MatterPortDataSet(Dataset):
 
             
             layout_depth = self.load_depth(layout_depth_name)
+            layout_seg = self.load_depth(layout_seg_name)
             init_label = self.load_depth(init_label_name)
             nx = self.load_image(nx_name)
             ny = self.load_image(ny_name)
@@ -211,8 +212,8 @@ class MatterPortDataSet(Dataset):
         else:
             image = self.transform(image)
             layout_depth = self.transform(layout_depth) / 4000.0
+            layout_seg = self.transform(layout_seg)
             init_label = self.transform(init_label)
-
             
             mesh_x = self.transform(mesh_x)
             mesh_y = self.transform(mesh_y)
@@ -227,7 +228,7 @@ class MatterPortDataSet(Dataset):
             
 
             intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
-            return image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y
+            return image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y
 
 
     def get_valid_filenames(self):
@@ -259,12 +260,13 @@ def data_test():
     a = MatterPortDataSet('E:\\dataset\\geolayout', 'training')
     i = 0
     print('length:', a.__len__())
-    image, layout_depth, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
+    image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
 
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('image:', image, image.size())
     print('layout_depth:', layout_depth, layout_depth.size())
+    print('layout_seg:', layout_seg, layout_seg.size())
     print('init_label:', init_label, init_label.size())
     print('normal', normal, normal.size())
     print('intrinsic:', intrinsic, intrinsic.shape)

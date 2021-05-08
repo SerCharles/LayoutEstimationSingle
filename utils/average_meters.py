@@ -104,6 +104,40 @@ class AverageMeterDiscrimitive(object):
         avg_loss_d = self.total_loss_d / self.total_num 
         return avg_loss, avg_loss_l, avg_loss_d
 
+
+class AverageMeterValid(object):
+    def __init__(self):
+        self.total_num = 0
+        self.total_acc = 0
+        self.total_rms = 0
+        self.total_rel = 0
+        self.total_log10 = 0
+        self.total_delta_1 = 0
+        self.total_delta_2 = 0
+        self.total_delta_3 = 0
+        
+
+    
+    def add_batch(self, length, acc, rms, rel, rlog10, delta_1, delta_2, delta_3):
+        self.total_num += length 
+        self.total_acc += length * acc
+        self.total_rms += length * rms 
+        self.total_rel += length * rel
+        self.total_log10 += length * rlog10
+        self.total_delta_1 += length * delta_1
+        self.total_delta_2 += length * delta_2 
+        self.total_delta_3 += length * delta_3
+    
+    def get_average(self):
+        avg_acc = self.total_acc / self.total_num
+        avg_rms = self.total_rms / self.total_num
+        avg_rel = self.total_rel / self.total_num
+        avg_log10 = self.total_log10 / self.total_num
+        avg_delta_1 = self.total_delta_1 / self.total_num
+        avg_delta_2 = self.total_delta_2 / self.total_num
+        avg_delta_3 = self.total_delta_3 / self.total_num
+        return avg_acc, avg_rms, avg_rel, avg_log10, avg_delta_1, avg_delta_2, avg_delta_3
+
 def get_result_string_total(the_type, epoch, epochs, batch, batchs, time, loss):
     if loss == None:
         result_string = the_type + ': Epoch: [{} / {}], Batch: [{} / {}], Time {:.3f}s' \
@@ -139,4 +173,19 @@ def get_result_string_seg(loss, acc):
 
 def get_result_string_discrimitive(loss, loss_l, loss_d):
     result_string = 'loss: {:.4f}, loss_l: {:.4f}, loss_d: {:.4f}'.format(loss, loss_l, loss_d)
+    return result_string
+
+
+def get_result_string_valid(batch, batchs, time, acc, rms, rel, rlog10, delta_1, delta_2, delta_3):
+    result_string = 'Batch: [{} / {}], Time {:.3f}s, Accuracy {:.3f}' \
+            .format(batch, batchs, time, acc) + '\n'
+    result_string += 'rms: {:.4f}, rel: {:.4f}, log10: {:.4f}, delta_1: {:.3f}, delta_2: {:.3f}, delta_3: {:.3f}' \
+        .format(rms, rel, rlog10, delta_1, delta_2, delta_3)
+    return result_string
+
+def get_result_string_valid_acc(acc, rms, rel, rlog10, delta_1, delta_2, delta_3):
+    result_string = 'Average: Accuracy {:.3f}' \
+            .format(acc) + '\n'
+    result_string += 'rms: {:.4f}, rel: {:.4f}, log10: {:.4f}, delta_1: {:.3f}, delta_2: {:.3f}, delta_3: {:.3f}' \
+        .format(rms, rel, rlog10, delta_1, delta_2, delta_3)
     return result_string

@@ -70,10 +70,10 @@ def get_selected_plane_info(labels, plane_info_per_pixel):
             b = plane_info_per_pixel[1:2, :, :]
             c = plane_info_per_pixel[2:3, :, :]
             d = plane_info_per_pixel[3:4, :, :]
-            a_avg = np.float(a * mask).sum() / mask_sum
-            b_avg = np.float(b * mask).sum() / mask_sum
-            c_avg = np.float(c * mask).sum() / mask_sum
-            d_avg = np.float(d * mask).sum() / mask_sum
+            a_avg = np.float((a * mask).sum()) / mask_sum
+            b_avg = np.float((b * mask).sum()) / mask_sum
+            c_avg = np.float((c * mask).sum()) / mask_sum
+            d_avg = np.float((d * mask).sum()) / mask_sum
         average_plane_infos[i][0] = a_avg
         average_plane_infos[i][1] = b_avg
         average_plane_infos[i][2] = c_avg
@@ -84,19 +84,18 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
     ''' 
     description: get the label of each pixel of all the pictures 
     parameter: the average plane infos of all planes, the unique labels, the intrinsics of the picture, height and width of the picture
-    return: the labels of all pixels
+    return: the labels of all pixels, the depth of all pixels
     '''
     result_labels = np.zeros((1, H, W))
-    fx = intrinsic[0][0]
-    fy = intrinsic[1][1]
-    x0 = intrinsic[2][0]
-    y0 = intrinsic[2][1]
+    fx = intrinsics[0][0]
+    fy = intrinsics[1][1]
+    x0 = intrinsics[2][0]
+    y0 = intrinsics[2][1]
     xx, yy = np.meshgrid(np.array([ii for ii in range(H)]), np.array([ii for ii in range(W)]))
     x_z = ((xx - x0) / fx)
     y_z = ((yy - y0) / fy)
     z_results = []
 
-    print(x_z.shape)
     for i in range(len(unique_label)):
         label = unique_label[i]
         if label != 0:
@@ -118,7 +117,8 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
         z_results.append(depth.reshape(1, H, W))
     z_results = np.concatenate(z_results, axis = 0)
     min_index = np.argmin(z_results, axis = 0)
-    return min_index
+    min_depth = np.min(z_results, axis = 0)
+    return min_index, min_depth
 
 def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold_ratio):
     ''' 
@@ -128,12 +128,13 @@ def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold
     '''
     N, _, H, W = seg_result.size()
     labels = []
+    depths = []
     for i in range(N):
         the_seg = seg_result[i]
         the_plane_info = plane_info_per_pixel[i]
         the_intrinsic = intrinsics[i]
 
-        the_index_list = torch.linspace(1, H * W, steps = H * W, dtype = np.int).view(1, H, W)
+        the_index_list = torch.linspace(0, H * W - 1, steps = H * W, dtype = np.int).view(1, H, W)
         if device:
             the_index_list = the_index_list.cuda()
 
@@ -159,15 +160,55 @@ def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold
         total_labels = total_labels.reshape((1, H, W))
 
         average_plane_infos, unique_label = get_selected_plane_info(total_labels, the_plane_info)
-        print(unique_label)
-        label_per_pixel = get_label_per_pixel(average_plane_infos, unique_label, the_intrinsic, H, W)
+        label_per_pixel, depth_per_pixel = get_label_per_pixel(average_plane_infos, unique_label, the_intrinsic, H, W)
 
         labels.append(label_per_pixel.reshape(1, 1, H, W))
+        depths.append(depth_per_pixel.reshape(1, 1, H, W))
     
     labels = np.concatenate(labels, axis = 0)
-    return labels
+    depths = np.concatenate(depths, axis = 0)
+    return labels, depths
 
 
+def get_colors(seg):
+    ''' 
+    description: get the pixel color of the seg result
+    parameter: labels
+    return: colors
+    '''
+    seg_r = seg // 9
+    seg_g = (seg - seg_r * 9) // 3
+    seg_b = seg % 3
+    seg_colors_r = (seg_r * 127).reshape((seg.shape[1], seg.shape[2]))
+    seg_colors_b = (seg_g * 127).reshape((seg.shape[1], seg.shape[2]))
+    seg_colors_g = (seg_b * 127).reshape((seg.shape[1], seg.shape[2]))
+    seg_colors = np.stack((seg_colors_r, seg_colors_g, seg_colors_b), axis = 2)
+    return seg_colors
 
+def save_results(save_base, base_names, final_labels, layout_seg):
+    ''' 
+    description: save the plane results
+    parameter: save_base, the file base names of the batch, the final depth, final segmentation and final plane infos
+    return: empty
+    '''
+    save_dir = os.path.join(save_base, 'seg')
+    if not os.path.exists(save_dir): 
+        os.mkdir(save_dir)
 
+    batch_size = len(base_names)
+    for i in range(batch_size):
+        base_name = base_names[i]
+        seg = final_labels[i]
+        seg_gt = layout_seg[i]
+        seg_colors = get_colors(seg)
+        seg_colors_gt = get_colors(seg_gt)
 
+        seg_image = Image.fromarray(np.uint8(seg_colors)).convert('RGB')
+        seg_image_gt = Image.fromarray(np.uint8(seg_colors_gt)).convert('RGB')
+
+        seg_name = os.path.join(save_dir, base_name + '_seg.png')
+        seg_gt_name = os.path.join(save_dir, base_name + '_seg_gt.png')
+
+        seg_image.save(seg_name)
+        seg_image_gt.save(seg_gt_name)
+    

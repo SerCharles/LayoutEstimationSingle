@@ -199,4 +199,5 @@ def init_valid_model(args):
     dataloader_validation = DataLoader(dataset_validation, batch_size = args.batch_size, shuffle = False, num_workers = 2)
     print('Data got!')
 
-    return device, dataloader_validation, model
+    return device, dataset_validation, dataloader_validation, model
+

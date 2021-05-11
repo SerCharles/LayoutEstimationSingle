@@ -57,7 +57,7 @@ def main():
             my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
             plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
 
-            my_seg, my_depth = post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
+            my_seg_raw, my_seg, my_depth = post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
             layout_seg = layout_seg.cpu().numpy()
             accuracy = seg_metrics(my_seg, layout_seg)
             my_depth = torch.from_numpy(my_depth)
@@ -74,7 +74,7 @@ def main():
             print(result_string)
 
             save_base = os.path.join(args.save_dir, args.cur_name)
-            save_results(save_base, base_names, my_seg, layout_seg)
+            save_results(save_base, base_names, my_seg_raw, layout_seg)
     
     avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3 = average_meter.get_average()
     result_string = get_result_string_valid_acc(avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3)

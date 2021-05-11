@@ -95,7 +95,7 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
     x_z = ((xx - x0) / fx)
     y_z = ((yy - y0) / fy)
     z_results = []
-
+    print(unique_label)
     for i in range(len(unique_label)):
         label = unique_label[i]
         if label != 0:
@@ -129,6 +129,7 @@ def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold
     N, _, H, W = seg_result.size()
     labels = []
     depths = []
+    labels_raw = []
     for i in range(N):
         the_seg = seg_result[i]
         the_plane_info = plane_info_per_pixel[i]
@@ -158,6 +159,7 @@ def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold
         total_labels = np.zeros((H * W), dtype = int)
         total_labels[selected_index] = cleared_labels
         total_labels = total_labels.reshape((1, H, W))
+        labels_raw.append(total_labels.reshape(1, 1, H, W))
 
         average_plane_infos, unique_label = get_selected_plane_info(total_labels, the_plane_info)
         label_per_pixel, depth_per_pixel = get_label_per_pixel(average_plane_infos, unique_label, the_intrinsic, H, W)
@@ -165,9 +167,10 @@ def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold
         labels.append(label_per_pixel.reshape(1, 1, H, W))
         depths.append(depth_per_pixel.reshape(1, 1, H, W))
     
+    labels_raw = np.concatenate(labels_raw, axis = 0)
     labels = np.concatenate(labels, axis = 0)
     depths = np.concatenate(depths, axis = 0)
-    return labels, depths
+    return labels_raw, labels, depths
 
 
 def get_colors(seg):

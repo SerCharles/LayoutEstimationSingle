@@ -8,6 +8,7 @@ mkdir norm
 mkdir depth 
 mkdir image 
 mkdir camera
+mkdir camera_pre
 
 
 cd $base_source
@@ -15,15 +16,14 @@ files=$(ls $folder)
 for file in $files
 do
     unzip $base_source/$file/matterport_color_images.zip -d $base_target
-    unzip $base_source/$file/matterport_camera_intrinsics.zip -d $base_target
+    unzip $base_source/$file/undistorted_camera_parameters.zip -d $base_target
     unzip $base_source/$file/matterport_depth_images.zip -d $base_target
     unzip $base_source/$file/undistorted_normal_images.zip -d $base_target
 
     chmod -R 777 $base_target
     cd $base_target/$file/matterport_color_images
-    ls * >> $base_target/image.log
     images=$(ls *)
-    cd $base_target/$file/matterport_camera_intrinsics
+    cd $base_target/$file/undistorted_camera_parameters
     cameras=$(ls *)
     cd $base_target/$file/matterport_depth_images
     depths=$(ls *)
@@ -37,7 +37,7 @@ do
 
     for camera in $cameras
     do 
-        mv $base_target/$file/matterport_camera_intrinsics/$camera $base_target/camera/$camera
+        mv $base_target/$file/undistorted_camera_parameters/$camera $base_target/camera_pre/$camera
     done
 
     for depth in $depths

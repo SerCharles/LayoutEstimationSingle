@@ -272,7 +272,7 @@ def data_test():
     print('intrinsic:', intrinsic, intrinsic.shape)
     print('mesh_x', mesh_x, mesh_x.size())
     print('mesh_y', mesh_y, mesh_y.size())
-    print(torch.sum(torch.eq(depth, 0)))
+    #print(torch.sum(torch.eq(depth, 0)))
     
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10

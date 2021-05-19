@@ -94,6 +94,15 @@ def get_plane_info_per_pixel(device, norm, depth, intrinsic):
     B = norm[:, 1:2, :, :]
     C = norm[:, 2:3, :, :]
     D = - A * x - B * y - C * depth 
+
+    size = torch.sqrt(A ** 2 + B ** 2 + C ** 2 + D ** 2) 
+    size_mask = torch.eq(size, 0)
+    size_real = size + size_mask * 1e-8
+    A = A / size_real
+    B = B / size_real
+    C = C / size_real
+    D = D / size_real
+
     plane_info = torch.cat((A, B, C, D), dim = 1)
     return plane_info
 

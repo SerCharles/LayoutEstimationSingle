@@ -39,7 +39,7 @@ def get_useful_labels(labels, threshold_ratio, total_size):
     for label in unique_labels:
         label_mask = (labels == label)
         label_num = (labels == label).sum()
-        if label_num > threshold_ratio:
+        if label_num > threshold:
             useful_labels.append(label)
         else: 
             labels[label_mask] = 0
@@ -91,7 +91,7 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
     fy = intrinsics[1][1]
     x0 = intrinsics[2][0]
     y0 = intrinsics[2][1]
-    xx, yy = np.meshgrid(np.array([ii for ii in range(H)]), np.array([ii for ii in range(W)]))
+    xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
     x_z = ((xx - x0) / fx)
     y_z = ((yy - y0) / fy)
     z_results = []

@@ -46,7 +46,7 @@ def main():
 
             mask_gt = torch.ne(init_label, 0)
 
-            '''
+            
             the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
             output = model(the_input)  
             seg_result = output[:, 0:2, :, :]
@@ -56,11 +56,10 @@ def main():
             my_seg = get_seg(seg_result)
             norm_result = normalize(norm_result, args.epsilon)
             my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
-            plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
-            '''
-            my_seg = mask_gt
-            norm_result = normal 
-            my_depth = layout_depth
+            
+            #my_seg = mask_gt
+            #norm_result = normal 
+            #my_depth = layout_depth
             plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
             
             my_seg_raw, my_seg, my_depth = post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
@@ -80,11 +79,13 @@ def main():
             print(result_string)
 
             save_base = os.path.join(args.save_dir, args.cur_name)
-            save_results(save_base, base_names, my_seg, layout_seg)
+            save_results(save_base, base_names, my_seg_raw, my_seg, layout_seg)
     
     avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3 = average_meter.get_average()
     result_string = get_result_string_valid_acc(avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3)
     print(result_string)
+
+
 
 if __name__ == "__main__":
     main()

@@ -50,7 +50,8 @@ class MatterPortDataSet(Dataset):
         parameter: the base dir of the dataset, the type(training, validation, testing)
         return:empty
         '''
-        self.setTransform()
+        self.size = [240, 320]
+        self.setTransform(self.size)
 
         self.base_dir = base_dir 
         self.type = the_type
@@ -151,14 +152,30 @@ class MatterPortDataSet(Dataset):
                         the_string += chr(item[0])
                     self.layout_seg_filenames.append(the_string)
 
-    def setTransform(self):
+    def setTransform(self, size):
         '''
         description: set the transformation of the input picture
-        parameter: empty
+        parameter: the size of output picture
         return: empty
         '''
-        self.transform = transforms.Compose([transforms.Resize([240, 320]), transforms.ToTensor()])
+        self.transform = transforms.Compose([transforms.Resize(size), transforms.ToTensor()])
+        #self.transform = transforms.Compose([transforms.ToTensor()])
 
+    def transform_intrinsics(self, new_size, old_size, intrinsic):
+        '''
+        description: transform the intrinsics
+        parameter: the size of output picture, the size of input picture, original intrinsic
+        return: new intrinsic
+        '''
+        new_H = new_size[0]
+        new_W = new_size[1]
+        old_H = old_size[1]
+        old_W = old_size[0]
+        intrinsic[0][0] = intrinsic[0][0] / old_W * new_W
+        intrinsic[2][0] = intrinsic[2][0] / old_W * new_W
+        intrinsic[1][1]= intrinsic[1][1] / old_H * new_H
+        intrinsic[2][1] = intrinsic[2][1] / old_H * new_H
+        return intrinsic
 
     def __getitem__(self, i):
         '''
@@ -169,10 +186,12 @@ class MatterPortDataSet(Dataset):
 
         image_name = os.path.join(self.base_dir, self.type, 'image', self.image_filenames[i])
         image = self.load_image(image_name)
-        x_size = image.size[1]
-        y_size = image.size[0]
-        xx, yy = np.meshgrid(np.array([ii for ii in range(x_size)]), np.array([ii for ii in range(y_size)]))
+        H = image.size[1]
+        W = image.size[0]
+        xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
+
         intrinsic = self.intrinsics[i]
+        print(intrinsic)
         fx = intrinsic[0][0]
         fy = intrinsic[1][1]
         x0 = intrinsic[2][0]
@@ -183,15 +202,12 @@ class MatterPortDataSet(Dataset):
 
         if not self.type == 'testing':
             base_name = self.depth_filenames[i][:-4]
-            depth_name = os.path.join(self.base_dir, self.type, 'depth', self.depth_filenames[i])
             init_label_name = os.path.join(self.base_dir, self.type, 'init_label', self.init_label_filenames[i])
             layout_depth_name = os.path.join(self.base_dir, self.type, 'layout_depth', self.layout_depth_filenames[i])
             layout_seg_name = os.path.join(self.base_dir, self.type, 'layout_seg', self.layout_seg_filenames[i])
             nx_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_nx.png')
             ny_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_ny.png')
             nz_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_nz.png')
-            boundary_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_boundary.png')
-            radius_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_radius.png')
 
             
             layout_depth = self.load_depth(layout_depth_name)
@@ -204,30 +220,36 @@ class MatterPortDataSet(Dataset):
 
                 
         if self.type == 'testing':
+            old_size = image.size
+            intrinsic = self.transform_intrinsics(self.size, old_size, intrinsic)
+            intrinsic = torch.tensor(intrinsic, dtype = torch.float)
             image = self.transform(image)
-            intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             mesh_x = self.transform(mesh_x)
             mesh_y = self.transform(mesh_y)
             return image, intrinsic, mesh_x, mesh_y
         else:
+            old_size = image.size
+            intrinsic = self.transform_intrinsics(self.size, old_size, intrinsic)
+            intrinsic = torch.tensor(intrinsic, dtype = torch.float)
             image = self.transform(image)
             layout_depth = self.transform(layout_depth) / 4000.0
             layout_seg = self.transform(layout_seg)
             init_label = self.transform(init_label)
-            
             mesh_x = self.transform(mesh_x)
             mesh_y = self.transform(mesh_y)
-
 
             nx = self.transform(nx).float()
             ny = self.transform(ny).float()
             nz = self.transform(nz).float()
+            nx = nx / 32768 - 1
+            ny = ny / 32768 - 1
+            nz = -(nz / 32768 - 1)
+
+
             normal = torch.cat((nx, ny, nz), dim = 0).float()
             normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
             normal = normal / (normal_length + 1e-8)
             
-
-            intrinsic = torch.tensor(self.intrinsics[i], dtype = torch.float)
             return image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y
 
 
@@ -257,8 +279,8 @@ class MatterPortDataSet(Dataset):
 
 #unit test code
 def data_test():
-    a = MatterPortDataSet('E:\\dataset\\geolayout', 'training')
-    i = 0
+    a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
+    i = 15
     print('length:', a.__len__())
     image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
 
@@ -273,7 +295,16 @@ def data_test():
     print('mesh_x', mesh_x, mesh_x.size())
     print('mesh_y', mesh_y, mesh_y.size())
     #print(torch.sum(torch.eq(depth, 0)))
-    
+
+    '''
+    print(normal[0][60][135])
+    print(normal[2][60][135])
+    print(normal[0][60][190])
+    print(normal[2][60][190])
+    print(layout_depth[0][50][120])
+    print(layout_depth[0][50][130])
+    '''
+
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10
     print('length:', b.__len__())

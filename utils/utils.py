@@ -74,26 +74,27 @@ def get_plane_info_per_pixel(device, norm, depth, intrinsic):
     parameter: device, the norm, depth, intrinsic
     return: plane info(A, B, C, D) per pixel
     '''
-    N, C, W, H  = norm.size()
-    xx, yy = np.meshgrid(np.array([ii for ii in range(H)]), np.array([ii for ii in range(W)]))
+    N, C, H, W  = norm.size()
+    xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
     xx = torch.from_numpy(xx)
     yy = torch.from_numpy(yy)
     if device:
         xx = xx.cuda()
         yy = yy.cuda()
     
-    xx = xx.view(1, 1, W, H).repeat(N, 1, 1, 1)
-    yy = yy.view(1, 1, W, H).repeat(N, 1, 1, 1)
-    fx = intrinsic[:, 0, 0].view(N, 1, 1, 1).repeat(1, 1, W, H)
-    fy = intrinsic[:, 1, 1].view(N, 1, 1, 1).repeat(1, 1, W, H)
-    x0 = intrinsic[:, 2, 0].view(N, 1, 1, 1).repeat(1, 1, W, H)
-    y0 = intrinsic[:, 2, 1].view(N, 1, 1, 1).repeat(1, 1, W, H)
+    xx = xx.view(1, 1, H, W).repeat(N, 1, 1, 1)
+    yy = yy.view(1, 1, H, W).repeat(N, 1, 1, 1)
+    fx = intrinsic[:, 0, 0].view(N, 1, 1, 1).repeat(1, 1, H, W)
+    fy = intrinsic[:, 1, 1].view(N, 1, 1, 1).repeat(1, 1, H, W)
+    x0 = intrinsic[:, 2, 0].view(N, 1, 1, 1).repeat(1, 1, H, W)
+    y0 = intrinsic[:, 2, 1].view(N, 1, 1, 1).repeat(1, 1, H, W)
     x = ((xx - x0) / fx) * depth 
     y = ((yy - y0) / fy) * depth 
+
     A = norm[:, 0:1, :, :]
     B = norm[:, 1:2, :, :]
     C = norm[:, 2:3, :, :]
-    D = - A * x - B * y - C * depth 
+    D = - A * x - B * y - C * depth
 
     size = torch.sqrt(A ** 2 + B ** 2 + C ** 2 + D ** 2) 
     size_mask = torch.eq(size, 0)

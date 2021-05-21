@@ -4,6 +4,7 @@ After training the network, use this to conduct the clustering, iterative improv
 
 
 import numpy as np
+from pandas.core import base
 from sklearn.cluster import MeanShift, estimate_bandwidth
 import torch
 from math import *
@@ -42,6 +43,7 @@ def main():
             batch_size = image.size(0)
             base_names = all_base_names[flag : flag + batch_size]
             flag += batch_size
+            print(base_names)
 
 
             mask_gt = torch.ne(init_label, 0)
@@ -56,10 +58,11 @@ def main():
             my_seg = get_seg(seg_result)
             norm_result = normalize(norm_result, args.epsilon)
             my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
-            
-            #my_seg = mask_gt
-            #norm_result = normal 
-            #my_depth = layout_depth
+            '''
+            my_seg = mask_gt
+            norm_result = normal 
+            my_depth = layout_depth
+            '''
             plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
             
             my_seg_raw, my_seg, my_depth = post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
@@ -75,7 +78,7 @@ def main():
             average_meter.add_batch(batch_size, accuracy, rms, rel, rlog10, delta_1, delta_2, delta_3)
             end = time.time()
             the_time = end - start
-            result_string = get_result_string_valid(i, len(valid_loader), the_time, accuracy, rms, rel, rlog10, delta_1, delta_2, delta_3)
+            result_string = get_result_string_valid(i + 1, len(valid_loader), the_time, accuracy, rms, rel, rlog10, delta_1, delta_2, delta_3)
             print(result_string)
 
             save_base = os.path.join(args.save_dir, args.cur_name)
@@ -84,7 +87,6 @@ def main():
     avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3 = average_meter.get_average()
     result_string = get_result_string_valid_acc(avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3)
     print(result_string)
-
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ def mean_shift_clustering(the_parameter_image):
     parameter: the parameters of the image 
     return: the labels of all the pixels
     '''
-    bandwidth = estimate_bandwidth(the_parameter_image, quantile = 0.2, n_samples = 1000)
+    bandwidth = estimate_bandwidth(the_parameter_image, quantile = 0.1, n_samples = 1000)
     #print(bandwidth)
     ms = MeanShift(bandwidth = bandwidth, bin_seeding = True)
     ms.fit(the_parameter_image)
@@ -70,10 +70,12 @@ def get_selected_plane_info(labels, plane_info_per_pixel):
             b = plane_info_per_pixel[1:2, :, :]
             c = plane_info_per_pixel[2:3, :, :]
             d = plane_info_per_pixel[3:4, :, :]
+            
             a_avg = np.float((a * mask).sum()) / mask_sum
             b_avg = np.float((b * mask).sum()) / mask_sum
             c_avg = np.float((c * mask).sum()) / mask_sum
             d_avg = np.float((d * mask).sum()) / mask_sum
+
         average_plane_infos[i][0] = a_avg
         average_plane_infos[i][1] = b_avg
         average_plane_infos[i][2] = c_avg
@@ -86,7 +88,6 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
     parameter: the average plane infos of all planes, the unique labels, the intrinsics of the picture, height and width of the picture
     return: the labels of all pixels, the depth of all pixels
     '''
-    result_labels = np.zeros((1, H, W))
     fx = intrinsics[0][0]
     fy = intrinsics[1][1]
     x0 = intrinsics[2][0]
@@ -94,6 +95,7 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
     xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
     x_z = ((xx - x0) / fx)
     y_z = ((yy - y0) / fy)
+
     z_results = []
     print(unique_label)
     for i in range(len(unique_label)):
@@ -107,12 +109,14 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
         else: 
             depth = -np.ones((H, W))
 
+        
         current_max = 14530529
         positive_mask = (depth >= 0)
         negative_mask = ~ positive_mask
         depth_positive = depth * positive_mask
         depth_negative = negative_mask * current_max
         depth = depth_positive + depth_negative  
+        
 
         z_results.append(depth.reshape(1, H, W))
     z_results = np.concatenate(z_results, axis = 0)

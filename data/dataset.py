@@ -152,6 +152,8 @@ class MatterPortDataSet(Dataset):
                         the_string += chr(item[0])
                     self.layout_seg_filenames.append(the_string)
 
+
+
     def setTransform(self, size):
         '''
         description: set the transformation of the input picture
@@ -159,7 +161,6 @@ class MatterPortDataSet(Dataset):
         return: empty
         '''
         self.transform = transforms.Compose([transforms.Resize(size), transforms.ToTensor()])
-        #self.transform = transforms.Compose([transforms.ToTensor()])
 
     def transform_intrinsics(self, new_size, old_size, intrinsic):
         '''
@@ -191,7 +192,6 @@ class MatterPortDataSet(Dataset):
         xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
 
         intrinsic = self.intrinsics[i]
-        print(intrinsic)
         fx = intrinsic[0][0]
         fy = intrinsic[1][1]
         x0 = intrinsic[2][0]
@@ -244,11 +244,9 @@ class MatterPortDataSet(Dataset):
             nx = nx / 32768 - 1
             ny = ny / 32768 - 1
             nz = -(nz / 32768 - 1)
-
-
             normal = torch.cat((nx, ny, nz), dim = 0).float()
-            normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
-            normal = normal / (normal_length + 1e-8)
+            #normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
+            #normal = normal / (normal_length + 1e-8)
             
             return image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y
 
@@ -280,7 +278,7 @@ class MatterPortDataSet(Dataset):
 #unit test code
 def data_test():
     a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
-    i = 15
+    i = 7
     print('length:', a.__len__())
     image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
 
@@ -295,16 +293,7 @@ def data_test():
     print('mesh_x', mesh_x, mesh_x.size())
     print('mesh_y', mesh_y, mesh_y.size())
     #print(torch.sum(torch.eq(depth, 0)))
-
-    '''
-    print(normal[0][60][135])
-    print(normal[2][60][135])
-    print(normal[0][60][190])
-    print(normal[2][60][190])
-    print(layout_depth[0][50][120])
-    print(layout_depth[0][50][130])
-    '''
-
+    
     b = MatterPortDataSet('E:\\dataset\\geolayout', 'testing')
     j = 10
     print('length:', b.__len__())

@@ -76,6 +76,7 @@ def get_plane_info_per_pixel(device, norm, depth, intrinsic):
     '''
     N, C, H, W  = norm.size()
     xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
+    yy = H - 1 - yy
     xx = torch.from_numpy(xx)
     yy = torch.from_numpy(yy)
     if device:

@@ -93,11 +93,14 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
     x0 = intrinsics[2][0]
     y0 = intrinsics[2][1]
     xx, yy = np.meshgrid(np.array([ii for ii in range(W)]), np.array([ii for ii in range(H)]))
+
+    yy = H - 1 - yy
     x_z = ((xx - x0) / fx)
     y_z = ((yy - y0) / fy)
 
+
+
     z_results = []
-    print(unique_label)
     for i in range(len(unique_label)):
         label = unique_label[i]
         if label != 0:
@@ -105,23 +108,15 @@ def get_label_per_pixel(average_plane_infos, unique_label, intrinsics, H, W):
             b = average_plane_infos[i][1]
             c = average_plane_infos[i][2]
             d = average_plane_infos[i][3]
-            depth = -d / (x_z * a + y_z * b + c)
+            
+            divided = x_z * a + y_z * b + c
+            depth_inverse = -divided / d
         else: 
-            depth = -np.ones((H, W))
-
-        
-        current_max = 14530529
-        positive_mask = (depth >= 0)
-        negative_mask = ~ positive_mask
-        depth_positive = depth * positive_mask
-        depth_negative = negative_mask * current_max
-        depth = depth_positive + depth_negative  
-        
-
-        z_results.append(depth.reshape(1, H, W))
+            depth_inverse = -np.ones((H, W))
+        z_results.append(depth_inverse.reshape(1, H, W))
     z_results = np.concatenate(z_results, axis = 0)
-    min_index = np.argmin(z_results, axis = 0)
-    min_depth = np.min(z_results, axis = 0)
+    min_index = np.argmax(z_results, axis = 0)
+    min_depth = 1 / np.max(z_results, axis = 0)
     return min_index, min_depth
 
 def post_process(device, seg_result, plane_info_per_pixel, intrinsics, threshold_ratio):

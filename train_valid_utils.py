@@ -53,7 +53,7 @@ def init_args():
     parser.add_argument('--weight_discrimitive', default = 1.0, type = float)
 
     #depth
-    parser.add_argument('--ord_num', default = 300, type = int)
+    parser.add_argument('--ord_num', default = 100, type = int)
     parser.add_argument('--ordinal_beta', default = 16.4, type = float)
     parser.add_argument('--ordinal_gamma', default = 1.0, type = float)
     parser.add_argument('--discretization', default = 'SID', type = str)

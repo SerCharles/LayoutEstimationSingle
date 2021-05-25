@@ -54,7 +54,6 @@ def get_predicted_depth(predicted_result, beta, gamma, discretization):
     predicted_result = predicted_result.view(N, 2, ord_num, H, W)
     ord_prob = F.softmax(predicted_result, dim = 1)[:, 0, :, :, :]
     ord_label = torch.sum((ord_prob > 0.5), dim = 1)
-
     if discretization == "SID":
         t0 = torch.exp(np.log(beta) * ord_label.float() / ord_num)
         t1 = torch.exp(np.log(beta) * (ord_label.float() + 1) / ord_num)

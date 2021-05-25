@@ -36,7 +36,7 @@ def init_args():
     parser.add_argument('--epochs', default = 200, type = int)
     parser.add_argument('--start_epoch', default = 0, type = int,
                     help = 'manual epoch number (useful on restarts)')
-    parser.add_argument('--learning_rate', '--lr', default = 1e-3, type = float)
+    parser.add_argument('--learning_rate', '--lr', default = 1e-4, type = float)
     parser.add_argument('--weight_decay', '--wd',  default = 0, type = float)
     parser.add_argument('--epsilon', default = 1e-8, type = float)
     parser.add_argument('--batch_size', '--bs', default = 8, type = int)
@@ -48,14 +48,14 @@ def init_args():
     parser.add_argument('--weight_seg', default = 1.0, type = float)
     parser.add_argument('--weight_norm_gt', default = 0.5, type = float)
     parser.add_argument('--weight_norm_mine', default = 0.5, type = float)
-    parser.add_argument('--weight_depth_gt', default = 0.5, type = float)
-    parser.add_argument('--weight_depth_mine', default = 0.5, type = float)
+    parser.add_argument('--weight_depth_gt', default = 0.2, type = float)
+    parser.add_argument('--weight_depth_mine', default = 0.2, type = float)
     parser.add_argument('--weight_discrimitive', default = 1.0, type = float)
 
     #depth
-    parser.add_argument('--ord_num', default = 100, type = int)
-    parser.add_argument('--ordinal_beta', default = 16.4, type = float)
-    parser.add_argument('--ordinal_gamma', default = 1.0, type = float)
+    parser.add_argument('--ord_num', default = 80, type = int)
+    parser.add_argument('--ordinal_beta', default = 16.384, type = float)
+    parser.add_argument('--ordinal_gamma', default = 0.8, type = float)
     parser.add_argument('--discretization', default = 'SID', type = str)
 
     #discrimitive_loss

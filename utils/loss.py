@@ -29,7 +29,7 @@ def ordinal_regression_loss(predict_result, gt, useful_mask, ord_num, beta, disc
     mask = torch.linspace(0, ord_num - 1, ord_num, requires_grad = False) \
         .view(1, ord_num, 1, 1).to(gt.device)
     mask = mask.repeat(N, 1, H, W).contiguous().long()
-    mask = (mask > label)
+    mask = (mask >= label)
     ord_c0[mask] = 0
     ord_c1 = 1 - ord_c0
     ord_label = torch.cat((ord_c0, ord_c1), dim = 1)

@@ -9,33 +9,41 @@ from torchvision import transforms
 import torch.nn.functional as F
 
 
-def ordinal_regression_loss(predict_result, gt, useful_mask, ord_num, beta, discretization):
+def ordinal_regression_loss(predict_result, gt, useful_mask, ord_num, beta, gamma, discretization):
     ''' 
     description: get the ordinal regression loss, used only in training
     parameter: the prediction calculated by the network, the ground truth label of pictures, the useful masks, other hyperparameters
     return: the regrssion loss
     '''
-    N, C, H, W = gt.shape
+    total_num = useful_mask.sum().float()
+    N, C, H, W = gt.size()
     predict_result = predict_result.view(N, 2, ord_num, H, W)
-    prob = F.log_softmax(predict_result, dim = 1).view(N, 2 * ord_num, H, W)
+    prob = F.log_softmax(predict_result, dim = 1)
+    prob = prob.view(N, 2 * ord_num, H, W)
+
+    gt = gt + gamma
+    gt = gt * useful_mask + (~useful_mask)
 
     ord_c0 = torch.ones(N, ord_num, H, W).to(gt.device)
     if discretization == "SID":
-        label = ord_num * torch.log(gt) / np.log(beta)
+        label = ord_num * torch.log(gt) / np.log(beta + gamma)
     else:
-        label = ord_num * (gt - 1.0) / (beta - 1.0)
-
+        label = ord_num * (gt - 1.0) / (beta + gamma - 1.0)
+    label = label * useful_mask
     label = label.long()
+
     mask = torch.linspace(0, ord_num - 1, ord_num, requires_grad = False) \
         .view(1, ord_num, 1, 1).to(gt.device)
     mask = mask.repeat(N, 1, H, W).contiguous().long()
     mask = (mask >= label)
     ord_c0[mask] = 0
     ord_c1 = 1 - ord_c0
+    
     ord_label = torch.cat((ord_c0, ord_c1), dim = 1)
 
-    entropy = -prob * ord_label * useful_mask
-    loss = torch.sum(entropy, dim = 1).mean()
+    entropy = -prob * ord_label
+    loss = torch.sum(entropy, dim = 1, keepdim = True)[useful_mask].mean()
+    
     return loss
 
 def get_norm_loss(norm, norm_gt, mask):

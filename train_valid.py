@@ -67,14 +67,14 @@ def train(args, device, train_loader, model, optimizer, epoch):
         norm_result = normalize(norm_result, args.epsilon)
         loss_norm_gt = get_norm_loss(norm_result, normal, mask_gt) * args.weight_norm_gt
         loss_norm_mine = get_norm_loss(norm_result, normal, mask_mine) * args.weight_norm_mine
-        mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt = norm_metrics(norm_result, normal, args.epsilon, mask_gt)
-        mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine = norm_metrics(norm_result, normal, args.epsilon, mask_mine)
+        mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt = norm_metrics(norm_result, normal, mask_gt)
+        mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine = norm_metrics(norm_result, normal, mask_mine)
         average_meter_normal_gt.add_batch(batch_size, loss_norm_gt.item(), mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt)
         average_meter_normal_mine.add_batch(batch_size, loss_norm_mine.item(), mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine)
         loss_norm = loss_norm_gt + loss_norm_mine
 
-        loss_depth_gt = ordinal_regression_loss(depth_result, layout_depth, mask_gt, args.ord_num, args.ordinal_beta, args.discretization) * args.weight_depth_gt
-        loss_depth_mine = ordinal_regression_loss(depth_result, layout_depth, mask_mine, args.ord_num, args.ordinal_beta, args.discretization) * args.weight_depth_mine
+        loss_depth_gt = ordinal_regression_loss(depth_result, layout_depth, mask_gt, args.ord_num, args.ordinal_beta, args.ordinal_gamma, args.discretization) * args.weight_depth_gt
+        loss_depth_mine = ordinal_regression_loss(depth_result, layout_depth, mask_mine, args.ord_num, args.ordinal_beta, args.ordinal_gamma, args.discretization) * args.weight_depth_mine
         my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
         rms_gt, rel_gt, rlog10_gt, delta_1_gt, delta_2_gt, delta_3_gt = depth_metrics(my_depth, layout_depth, mask_gt)
         rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine = depth_metrics(my_depth, layout_depth, mask_mine)
@@ -178,14 +178,14 @@ def valid(args, device, valid_loader, model, epoch):
             norm_result = normalize(norm_result, args.epsilon)
             loss_norm_gt = get_norm_loss(norm_result, normal, mask_gt) * args.weight_norm_gt
             loss_norm_mine = get_norm_loss(norm_result, normal, mask_mine) * args.weight_norm_mine
-            mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt = norm_metrics(norm_result, normal, args.epsilon, mask_gt)
-            mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine = norm_metrics(norm_result, normal, args.epsilon, mask_mine)
+            mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt = norm_metrics(norm_result, normal, mask_gt)
+            mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine = norm_metrics(norm_result, normal, mask_mine)
             average_meter_normal_gt.add_batch(batch_size, loss_norm_gt.item(), mean_gt, median_gt, rmse_gt, d_1125_gt, d_2250_gt, d_30_gt)
             average_meter_normal_mine.add_batch(batch_size, loss_norm_mine.item(), mean_mine, median_mine, rmse_mine, d_1125_mine, d_2250_mine, d_30_mine)
             loss_norm = loss_norm_gt + loss_norm_mine
 
-            loss_depth_gt = ordinal_regression_loss(depth_result, layout_depth, mask_gt, args.ord_num, args.ordinal_beta, args.discretization) * args.weight_depth_gt
-            loss_depth_mine = ordinal_regression_loss(depth_result, layout_depth, mask_mine, args.ord_num, args.ordinal_beta, args.discretization) * args.weight_depth_mine
+            loss_depth_gt = ordinal_regression_loss(depth_result, layout_depth, mask_gt, args.ord_num, args.ordinal_beta, args.ordinal_gamma, args.discretization) * args.weight_depth_gt
+            loss_depth_mine = ordinal_regression_loss(depth_result, layout_depth, mask_mine, args.ord_num, args.ordinal_beta, args.ordinal_gamma, args.discretization) * args.weight_depth_mine
             my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
             rms_gt, rel_gt, rlog10_gt, delta_1_gt, delta_2_gt, delta_3_gt = depth_metrics(my_depth, layout_depth, mask_gt)
             rms_mine, rel_mine, rlog10_mine, delta_1_mine, delta_2_mine, delta_3_mine = depth_metrics(my_depth, layout_depth, mask_mine)

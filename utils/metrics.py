@@ -23,8 +23,11 @@ def depth_metrics(depth_map, depth_map_gt, mask):
 
     batch_size = depth_map_gt.size(0)
     number_by_batch = mask.view(batch_size, -1).sum(dim = 1).float()
+    mask_by_batch = (number_by_batch == 0)
+    number_by_batch = number_by_batch + (mask_by_batch)
 
-    
+    depth_map = depth_map * mask + (~mask)
+    depth_map_gt = depth_map_gt * mask + (~mask)
 
     total_num = mask.float().sum()
     abs_diff = (depth_map - depth_map_gt).abs() * mask
@@ -33,6 +36,8 @@ def depth_metrics(depth_map, depth_map_gt, mask):
     diff_square = diff_square.view(batch_size, -1)
     diff_square_avg = torch.sum(diff_square, dim = 1) / number_by_batch
     rms = float(torch.mean(torch.sqrt(diff_square_avg)))
+
+
 
     aa = log10(depth_map) * mask
     bb = log10(depth_map_gt) * mask
@@ -51,15 +56,18 @@ def depth_metrics(depth_map, depth_map_gt, mask):
 
     return rms, rel, rlog10, rate_1, rate_2, rate_3
 
-def norm_metrics(norm, norm_gt, epsilon, mask):
+def norm_metrics(norm, norm_gt, mask):
     '''
     description: get the norm metrics of the got norm and the ground truth norm
-    parameter: norm mine and the ground truth, epsilon, mask
+    parameter: norm mine and the ground truth, mask
     return: several metrics, mean, median, rmse, 11.25, 22.5, 30
     '''
 
     batch_size = norm_gt.size(0)
     number_by_batch = mask.view(batch_size, -1).sum(dim = 1).float()
+    mask_by_batch = (number_by_batch == 0)
+    number_by_batch = number_by_batch + (mask_by_batch)
+
     total_num = mask.float().sum()
     dot_product = torch.sum(norm * norm_gt, dim = 1, keepdim = True) #N * 1 * W * H
     dot = torch.clamp(dot_product, min = -1.0, max = 1.0)
@@ -74,7 +82,6 @@ def norm_metrics(norm, norm_gt, epsilon, mask):
     median = float(torch.median(selected_error))
 
     error_square = torch.pow(errors, 2).view(batch_size, -1)
-    total_size = batch_size * error_square.size(1)
     error_square_avg = torch.sum(error_square, dim = 1) / number_by_batch
     rmse = float(torch.mean(torch.sqrt(error_square_avg)))
 
@@ -83,6 +90,7 @@ def norm_metrics(norm, norm_gt, epsilon, mask):
     delta_3 = float(((errors < 30) & mask).float().sum() / total_num)
 
     return mean, median, rmse, delta_1, delta_2, delta_3
+
 
 
 def seg_metrics(segs, segs_gt):

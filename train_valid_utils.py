@@ -34,6 +34,7 @@ def init_args():
     parser.add_argument('--parallel',  type = int, default = 1, help = 'use multiple GPUs or not')
     parser.add_argument('--gpu_id', type = int, default = 0, help = 'GPU device id used')
     parser.add_argument('--epochs', default = 200, type = int)
+    
     parser.add_argument('--start_epoch', default = 0, type = int,
                     help = 'manual epoch number (useful on restarts)')
     parser.add_argument('--learning_rate', '--lr', default = 1e-4, type = float)
@@ -43,6 +44,11 @@ def init_args():
     parser.add_argument('--data_dir', default = '/home/shenguanlin/geolayout', type = str)
     parser.add_argument('--save_dir', default = '/home/shenguanlin/geolayout_result', type = str)
     parser.add_argument('--cur_name', default = 'final', type = str)
+
+    #pretrain
+    parser.add_argument('--pretrain', default = 0, type = int, help = 'use pretrained or not')
+    parser.add_argument('--pretrain_name', default = '/home/shenguanlin/geolayout_result/pretrain.pth', type = str)
+
 
     #weight
     parser.add_argument('--weight_seg', default = 1.0, type = float)
@@ -134,7 +140,11 @@ def init_model(args):
         else: 
             model = model.cuda()
 
-    if(args.start_epoch != 0):
+    if args.pretrain != 0:
+        filename = args.pretrain_name
+        model.load_state_dict(torch.load(filename))
+
+    elif args.start_epoch != 0:
         file_dir = os.path.join(args.save_dir, args.cur_name)
         filename = os.path.join(file_dir, 'checkpoint_' + str(args.start_epoch) + '.pth')
         model.load_state_dict(torch.load(filename))

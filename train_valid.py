@@ -38,10 +38,11 @@ def train(args, device, train_loader, model, optimizer, epoch):
     average_meter_discrimitive = AverageMeterDiscrimitive()
     total_loss = 0.0
     total_num = 0
-    for i, (image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
+    for i, (image, depth, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(train_loader):
         start = time.time()
         if device:
             image = image.cuda()
+            depth = depth.cuda()
             layout_depth = layout_depth.cuda()
             init_label = init_label.cuda()
             normal = normal.cuda()
@@ -49,6 +50,9 @@ def train(args, device, train_loader, model, optimizer, epoch):
             mesh_x = mesh_x.cuda() 
             mesh_y = mesh_y.cuda()
         
+        useful_mask = depth > 0
+        init_label = init_label * useful_mask
+
         batch_size = image.size(0)
         mask_gt = torch.ne(init_label, 0)
 
@@ -60,7 +64,7 @@ def train(args, device, train_loader, model, optimizer, epoch):
         norm_result = output[:, 2:5, :, :]
         depth_result = output[:, 5:, :, :]
 
-        accuracy_seg, loss_seg, mask_mine = get_segmentation_loss(seg_result, init_label, args.epsilon)
+        accuracy_seg, loss_seg, mask_mine = get_segmentation_loss(seg_result, init_label, args.epsilon, useful_mask)
         loss_seg = loss_seg *  args.weight_seg
         average_meter_seg.add_batch(batch_size, loss_seg.item(), accuracy_seg)
 
@@ -150,11 +154,12 @@ def valid(args, device, valid_loader, model, epoch):
 
     total_loss = 0.0
     total_num = 0
-    for i, (image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
+    for i, (image, depth, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
         start = time.time()
 
         if device:
             image = image.cuda()
+            depth = depth.cuda()
             layout_depth = layout_depth.cuda()
             init_label = init_label.cuda()
             normal = normal.cuda()
@@ -162,6 +167,10 @@ def valid(args, device, valid_loader, model, epoch):
             mesh_x = mesh_x.cuda() 
             mesh_y = mesh_y.cuda()
         with torch.no_grad():
+
+            useful_mask = depth > 0
+            init_label = init_label * useful_mask
+
             batch_size = image.size(0)
             mask_gt = torch.ne(init_label, 0)
 
@@ -171,7 +180,7 @@ def valid(args, device, valid_loader, model, epoch):
             norm_result = output[:, 2:5, :, :]
             depth_result = output[:, 5:, :, :]
 
-            accuracy_seg, loss_seg, mask_mine = get_segmentation_loss(seg_result, init_label, args.epsilon)
+            accuracy_seg, loss_seg, mask_mine = get_segmentation_loss(seg_result, init_label, args.epsilon, useful_mask)
             loss_seg = loss_seg *  args.weight_seg
             average_meter_seg.add_batch(batch_size, loss_seg.item(), accuracy_seg)
 

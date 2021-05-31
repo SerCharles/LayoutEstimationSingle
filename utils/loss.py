@@ -61,23 +61,33 @@ def get_norm_loss(norm, norm_gt, mask):
     return loss_per_pixel
 
 
-def get_segmentation_loss(output, init_label, epsilon):
+
+def get_segmentation_loss(output, init_label, epsilon, mask):
     ''' 
     description: get the segmentation accuracy and cross entropy loss
-    parameter: the output, the ground truth segmentation
+    parameter: the output, the ground truth segmentation, mask
     return: accuracy, loss, the prediction
     '''
     N, C, H, W = init_label.size()
-    total_num = N * H * W
+    batch_size = init_label.size(0)
+    total_num = torch.sum(mask)
+
+    output = output * mask
     softmaxed_output = F.softmax(output, dim = 1) 
+
     mask_true = torch.ne(init_label, 0)
     mask_false = ~mask_true 
+
+    mask_true = mask_true * mask 
+    mask_false = mask_false * mask
+
     one_hot_gt = torch.cat((mask_true, mask_false), dim = 1).float()
     cross_entropy_loss = -torch.sum(one_hot_gt * torch.log(softmaxed_output + epsilon)) / total_num
     probability_true = softmaxed_output[:, 0:1, :, :]
     predict_true = probability_true > 0.5
 
-    accuracy = float((predict_true == mask_true).float().sum() / total_num)
+    accuracy = float(((predict_true == mask_true) * mask).float().sum() / total_num)
+
     return accuracy, cross_entropy_loss, predict_true
 
 def get_discrimitive_loss(device, plane_infos, plane_seg_gt, average_plane_info, delta_v, delta_d):

@@ -121,7 +121,7 @@ def init_model(args):
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3) + \
         ',' + str(args.gpu_id + 4) + ',' + str(args.gpu_id + 5) + ',' + str(args.gpu_id + 6) + ',' + str(args.gpu_id + 7)+ ',' + str(args.gpu_id + 8)
         '''
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) + ',' + str(args.gpu_id + 2) + ',' + str(args.gpu_id + 3)
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id) + ',' + str(args.gpu_id + 1) 
     else:
         device = False
     torch.backends.cudnn.enabled = True
@@ -136,7 +136,7 @@ def init_model(args):
     if device:
         if args.parallel: 
             #model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).cuda()
-            model = torch.nn.DataParallel(model, device_ids = [0, 1, 2, 3]).cuda()
+            model = torch.nn.DataParallel(model, device_ids = [0, 1]).cuda()
         else: 
             model = model.cuda()
 

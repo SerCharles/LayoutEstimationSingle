@@ -27,11 +27,12 @@ def main():
     all_base_names = dataset_validation.get_valid_filenames()
     flag = 0
     average_meter = AverageMeterValid()
-    for i, (image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
+    for i, (image, depth, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y) in enumerate(valid_loader):
         start = time.time()
         
         if device:
             image = image.cuda()
+            depth = depth.cuda()
             layout_depth = layout_depth.cuda()
             init_label = init_label.cuda()
             normal = normal.cuda()

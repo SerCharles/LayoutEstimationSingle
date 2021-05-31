@@ -202,6 +202,7 @@ class MatterPortDataSet(Dataset):
 
         if not self.type == 'testing':
             base_name = self.depth_filenames[i][:-4]
+            depth_name = os.path.join(self.base_dir, self.type, 'depth', self.depth_filenames[i])
             init_label_name = os.path.join(self.base_dir, self.type, 'init_label', self.init_label_filenames[i])
             layout_depth_name = os.path.join(self.base_dir, self.type, 'layout_depth', self.layout_depth_filenames[i])
             layout_seg_name = os.path.join(self.base_dir, self.type, 'layout_seg', self.layout_seg_filenames[i])
@@ -209,7 +210,7 @@ class MatterPortDataSet(Dataset):
             ny_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_ny.png')
             nz_name = os.path.join(self.base_dir, self.type, 'normal', base_name + '_nz.png')
 
-            
+            depth = self.load_depth(depth_name)
             layout_depth = self.load_depth(layout_depth_name)
             layout_seg = self.load_depth(layout_seg_name)
             init_label = self.load_depth(init_label_name)
@@ -232,6 +233,7 @@ class MatterPortDataSet(Dataset):
             intrinsic = self.transform_intrinsics(self.size, old_size, intrinsic)
             intrinsic = torch.tensor(intrinsic, dtype = torch.float)
             image = self.transform(image)
+            depth = self.transform(depth) / 4000.0
             layout_depth = self.transform(layout_depth) / 4000.0
             layout_seg = self.transform(layout_seg)
             init_label = self.transform(init_label)
@@ -248,7 +250,7 @@ class MatterPortDataSet(Dataset):
             #normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
             #normal = normal / (normal_length + 1e-8)
             
-            return image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y
+            return image, depth, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y
 
 
     def get_valid_filenames(self):
@@ -280,11 +282,12 @@ def data_test():
     a = MatterPortDataSet('E:\\dataset\\geolayout', 'validation')
     i = 7
     print('length:', a.__len__())
-    image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
+    image, depth, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(i)
 
     print('filename:', a.layout_depth_filenames[i])
     print('filename:', a.layout_depth_filenames[i + 1])
     print('image:', image, image.size())
+    print('depth:', depth, depth.size())
     print('layout_depth:', layout_depth, layout_depth.size())
     print('layout_seg:', layout_seg, layout_seg.size())
     print('init_label:', init_label, init_label.size())

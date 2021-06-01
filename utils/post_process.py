@@ -187,10 +187,10 @@ def get_colors(seg):
     seg_colors = np.stack((seg_colors_r, seg_colors_g, seg_colors_b), axis = 2)
     return seg_colors
 
-def save_results(save_base, base_names, final_labels_raw, final_labels, layout_seg):
+def save_results(save_base, base_names, init_labels, final_labels_raw, final_labels, layout_seg):
     ''' 
     description: save the plane results
-    parameter: save_base, the file base names of the batch, the final depth, final segmentation and final plane infos
+    parameter: save_base, the file base names of the batch, the init labels, final segmentation and final plane infos
     return: empty
     '''
     save_dir = os.path.join(save_base, 'seg')
@@ -200,22 +200,27 @@ def save_results(save_base, base_names, final_labels_raw, final_labels, layout_s
     batch_size = len(base_names)
     for i in range(batch_size):
         base_name = base_names[i]
+        init_raw = init_labels[i]
         seg_raw = final_labels_raw[i]
         seg = final_labels[i]
         seg_gt = layout_seg[i]
 
+        init_colors_raw = get_colors(init_raw)
         seg_colors_raw = get_colors(seg_raw)
         seg_colors = get_colors(seg)
         seg_colors_gt = get_colors(seg_gt)
 
+        init_image_raw = Image.fromarray(np.uint8(init_colors_raw)).convert('RGB')
         seg_image_raw = Image.fromarray(np.uint8(seg_colors_raw)).convert('RGB')
         seg_image = Image.fromarray(np.uint8(seg_colors)).convert('RGB')
         seg_image_gt = Image.fromarray(np.uint8(seg_colors_gt)).convert('RGB')
 
+        init_name_raw = os.path.join(save_dir, base_name + '_seg_raw_gt.png')
         seg_name_raw = os.path.join(save_dir, base_name + '_seg_raw.png')
         seg_name = os.path.join(save_dir, base_name + '_seg.png')
         seg_name_gt = os.path.join(save_dir, base_name + '_seg_gt.png')
 
+        init_image_raw.save(init_name_raw)
         seg_image_raw.save(seg_name_raw)
         seg_image.save(seg_name)
         seg_image_gt.save(seg_name_gt)

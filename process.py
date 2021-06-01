@@ -44,12 +44,12 @@ def main():
             batch_size = image.size(0)
             base_names = all_base_names[flag : flag + batch_size]
             flag += batch_size
-            print(base_names)
 
-
+            useful_mask = depth > 0
+            init_label = init_label * useful_mask
             mask_gt = torch.ne(init_label, 0)
 
-            '''
+            
             the_input = torch.cat((image, mesh_x, mesh_y), dim = 1)
             output = model(the_input)  
             seg_result = output[:, 0:2, :, :]
@@ -59,11 +59,12 @@ def main():
             my_seg = get_seg(seg_result)
             norm_result = normalize(norm_result, args.epsilon)
             my_depth = get_predicted_depth(depth_result, args.ordinal_beta, args.ordinal_gamma, args.discretization)
-            plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
             '''
             my_seg = mask_gt
             norm_result = normal 
             my_depth = layout_depth
+            '''
+
             plane_info_per_pixel = get_plane_info_per_pixel(device, norm_result, my_depth, intrinsic)
             
             my_seg_raw, my_seg, my_depth = post_process(device, my_seg, plane_info_per_pixel, intrinsic, args.threshold)
@@ -82,50 +83,14 @@ def main():
             result_string = get_result_string_valid(i + 1, len(valid_loader), the_time, accuracy, rms, rel, rlog10, delta_1, delta_2, delta_3)
             print(result_string)
             save_base = os.path.join(args.save_dir, args.cur_name)
-            save_results(save_base, base_names, my_seg_raw, my_seg, layout_seg)
+
+            init_label_np = init_label.cpu().numpy()
+            save_results(save_base, base_names, init_label_np, my_seg_raw, my_seg, layout_seg)
     
     avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3 = average_meter.get_average()
     result_string = get_result_string_valid_acc(avg_acc, avg_rms, avg_rel, avg_rlog10, avg_delta_1, avg_delta_2, avg_delta_3)
     print(result_string)
 
-'''
-def kebab():
-    a = MatterPortDataSet('/home/shenguanlin/geolayout', 'validation')
-    image, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y = a.__getitem__(17)
-
-
-    device = False
-    image = image.unsqueeze(0)
-    layout_depth = layout_depth.unsqueeze(0)
-    layout_seg = layout_seg.unsqueeze(0)
-    init_label = init_label.unsqueeze(0)
-    mask_gt = torch.ne(init_label, 0)
-    normal = normal.unsqueeze(0)
-    intrinsic = intrinsic.unsqueeze(0)
-
-    N, C, H, W = image.size()
-    
-
-    plane_info_per_pixel = get_plane_info_per_pixel(device, normal, layout_depth, intrinsic)
-
-
-    my_seg_raw, my_seg, my_depth = post_process(device, mask_gt, plane_info_per_pixel, intrinsic, 0.05)
-    layout_seg = layout_seg.cpu().numpy()
-    accuracy = seg_metrics(my_seg, layout_seg)
-    my_depth = torch.from_numpy(my_depth)
-    my_mask = torch.ones((N, 1, H, W))
-    my_mask = torch.eq(my_mask, 1)
-
-    rms, rel, rlog10, delta_1, delta_2, delta_3 = depth_metrics(my_depth, layout_depth, my_mask)
-
-    result_string = 'Accuracy {:.3f}, rms: {:.4f}, rel: {:.4f}, log10: {:.4f}, delta_1: {:.3f}, delta_2: {:.3f}, delta_3: {:.3f}' \
-        .format(accuracy, rms, rel, rlog10, delta_1, delta_2, delta_3)
-    print(result_string)
-
-    save_base = '/home/shenguanlin'
-    save_results(save_base, ['test'], my_seg_raw, my_seg, layout_seg)
-'''
 
 if __name__ == "__main__":
     main()
-    #kebab()

@@ -35,9 +35,9 @@ def normalize(norm, epsilon):
     return: normalized normal vector
     '''
     batch_size = norm.size(0)
-    nx = norm[:][0 : 1][:][:]
-    ny = norm[:][1 : 2][:][:]
-    nz = norm[:][2 : 3][:][:]
+    nx = norm[:, 0 : 1, :, :]
+    ny = norm[:, 1 : 2, :, :]
+    nz = norm[:, 2 : 3, :, :]
     length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
     norm = norm / (length + epsilon)
     return norm

@@ -69,7 +69,7 @@ def norm_metrics(norm, norm_gt, mask):
     number_by_batch = number_by_batch + (mask_by_batch)
 
     total_num = mask.float().sum()
-    dot_product = torch.sum(norm * norm_gt, dim = 1, keepdim = True) #N * 1 * W * H
+    dot_product = torch.sum(norm * norm_gt * mask, dim = 1, keepdim = True) #N * 1 * W * H
     dot = torch.clamp(dot_product, min = -1.0, max = 1.0)
     errors = torch.acos(dot) / np.pi * 180
 

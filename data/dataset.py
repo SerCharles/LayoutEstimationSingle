@@ -247,8 +247,8 @@ class MatterPortDataSet(Dataset):
             ny = ny / 32768 - 1
             nz = -(nz / 32768 - 1)
             normal = torch.cat((nx, ny, nz), dim = 0).float()
-            #normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
-            #normal = normal / (normal_length + 1e-8)
+            normal_length = torch.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
+            normal = normal / (normal_length + 1e-8)
             
             return image, depth, layout_depth, layout_seg, init_label, normal, intrinsic, mesh_x, mesh_y
 

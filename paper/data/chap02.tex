@@ -1,0 +1,76 @@
+% !TeX root = ../main.tex
+
+\chapter{三维室内空间布局估计的数据标注}
+\section{预训练的语义分割信息标注}
+\label{2.2}
+本文的主要方法要求在预训练中有每个像素的图像语义分割信息、深度信息和法向信息作为监督数据，目前Matterport3D\cite{Matterport3D}数据集已有深度信息和法向信息，但是缺乏图像语义分割信息，本文就利用Matterport3D数据集提供的场景三维面片数据进行语义分割数据标注。
+
+首先，本文编写了一个python脚本，根据Matterport3D\cite{Matterport3D}数据集提供的点云实例分割信息和实例类别，将数据集的三维模型重新上色：类别为门、窗、天花板、墙、地板的实例被染色为黑色，其余实例被染色为白色。之后，本文参考了2020年发表的论文AdversarialTexture\cite{huang2020adversarial}提供的数据预处理代码，使用基于光线投射的cuda渲染方法，对重新上色后的三维模型在对应的相机内参、外参下渲染出对应的语义分割图片。渲染的部分结果如下：
+
+\begin{figure}
+  \centering
+  \label{semantic}
+  \includegraphics[width=0.6\linewidth]{semantic.pdf}
+  \caption{语义分割渲染示意图，其中左图是Matterport3D\cite{Matterport3D}提供的图片数据，右图是本文渲染的语义信息数据，其中白色为物体，黑色为背景}
+\end{figure}
+
+
+\section{背景平面标注}
+\label{2.3}
+除此之外，Matterport3D-Layout\cite{zhang2020geolayout}还提供了背景平面的分割信息，这一点在本文提供的方法中也尤为重要。本文也基于ScanNet数据集\cite{dai2017scannet}完成了这一数据的标注。首先，本文根据ScanNet\cite{dai2017scannet}提供的点云实例分割信息和实例类别去除了所有背景之外的物体。之后，本文参考PlaneRCNN\cite{liu2019planercnn}提供的数据预处理代码，基于随机采样一致（Random Sample Consensus，RANSAC）算法，对只剩背景框架的三维模型进行了平面分割。之后再利用\ref{2.2}中的渲染工具，就能渲染出对应的背景平面分割信息。
+
+\begin{figure}
+  \centering
+  \label{planeseg}
+  \includegraphics[width=1.0\linewidth]{PlaneSeg.pdf}
+  \caption{背景平面分割示意图，其中左图是ScanNet\cite{dai2017scannet}提供的三维模型，右图是本文进行物体去除和背景平面分割后的三维模型结果}
+\end{figure}
+
+\section{线框-关键点标注}
+除了平面信息外，线框-关键点信息也较为重要，本文也设计了相应的标注算法。首先，\ref{2.3}中已经得到了去除物体的三维平面分割结果，每个位于当前三维模型的点都有了对应的语义标签。本文就遍历了这一新的三维模型，找到所有连接两个有不同语义标签$l_A, l_B$的点的线，取这些线的中点作为分界线的基准点，基准点集合记为$S_{AB}={p_1, p_2, \dots p_N}$。之后，本文使用最小生成树算法将所有$p_i \in S_{AB}$连接成一条链。最后，本文使用道格拉斯-普克算法（Ramer–Douglas–Peucker algorithm）\cite{doi:https://doi.org/10.1002/9780470669488.ch2}将这条链简化成一条或者多条边界线，剩余的边界线断点就是关键点。标注完关键点和线之后，再利用\ref{2.2}中的渲染工具，就能渲染出对应的线框-关键点数据。标注算法的示意图见图\ref{algorithm}，标注的结果见图\ref{linepoint}。
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.0\linewidth]{algorithm.pdf}
+  \caption{线框-关键点标注算法示意图}
+    \label{algorithm}
+
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.55\linewidth]{LinePoint.pdf}
+  \caption{线框-关键点标注结果示意图，其中左图为ScanNet\cite{dai2017scannet}提供的图片，右图为平面-线框-关键点标注结果（为了显示效果没有完全一一对应处理）}
+\label{linepoint}
+\end{figure}
+
+
+
+
+
+\section{机器标注的分析与展望}
+首先，毋庸置疑的是，机器标注更容易短时间获取数量庞大的数据集。将人工标注和机器自动标注结合的Matterport3D-Layout仅仅有五千多组二维数据，数目很少，在实际训练中很容易陷入过拟合。而使用机器自动标注，本文获取了近20万组二维数据组成的预训练数据集，有效解决了过拟合问题。
+
+但是使用机器标注也有一些问题。首先，对于语义分割的标注，因为数据集的三维模型存在噪声，部分语义分割情况存在偏差，参见图\ref{noise}。其次，背景平面的标注也存在问题：当前的方法是首先在三维模型中抠掉所有的前景物体，而因为三维模型数据的特点，会出现孔洞，参见图\ref{hole}。最终，这种线框和关键点标注结果也并不是非常理想，很多线没有被充分简化，导致最终预测线框和关键点会很麻烦。
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.6\linewidth]{noise.pdf}
+  \caption{语义分割的自动标注出现偏差的例子：因为三维模型有噪声，标注的语义分割信息与实际不符}
+    \label{noise}
+
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.55\linewidth]{hole.pdf}
+  \caption{背景平面分割信息的自动标注出现偏差的例子：从三维模型直接抠掉前景物体会产生孔洞}
+    \label{hole}
+
+\end{figure}
+
+
+
+机器标注方面还有一些工作有必要去做：Matterport3D-Layout\cite{zhang2020geolayout}数据集提供了背景的深度信息用来辅助训练，是十分有价值的。而如果能够解决数据集三维模型的噪声问题，还有背景平面标注的孔洞问题，再对\ref{2.2}中提到的渲染工具进行修改，我们能够进一步获得近20万组图片对应的背景深度信息、背景法向信息和背景分割信息，这样能让更多的三维室内场景布局估计方法成为可能。
+
+

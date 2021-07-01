@@ -1,0 +1,43 @@
+% !TeX root = ../main.tex
+
+\begin{survey}
+\label{cha:survey}
+
+\title{Related work of 3D scene reconstruction and our pipeline}
+\maketitle
+
+
+\tableofcontents
+
+
+Since our work is a 3D scene reconstruction neural network, with the pipeline of monocular 3D object detection, 3D object selection and 3D object place fixation, I briefly describes previous work based on deep neural network about these topics here.
+
+\section{3D scene reconstruction}
+Considering different kinds of input data, 3D scene reconstruction can be categorized as 4 types: 3D scene reconstruction from RGB-D scan, from incomplete scene, from a RGB picture sequence, and from a single RGB picture.
+When it comes to scene reconstruction from RGB-D scan, the input is often represented by a truncated signed distance field (TSDF). The TSDF is then fed into a 3D convolutional neural network, in which the two tasks of scene reconstruction and instance segmentation are conducted simultaneously\cite{song2016ssc} \cite{dai2018scancomplete}. Moreover, SceneCAD\cite{avetisyan2020scenecad} has introduced a method to convert the RGB-D scan of a scene into its CAD representation. It estimates the layout of the scene, including the corners, edges and quads, as well as the alignments of the objects, such as their bounding boxes, jointly. After that, it uses graph neural network to model the relationships between objects, in order to improve the reconstruction result, which we will discuss later. Reconstructing the scene from its incomplete pointcloud scan is also an option. LIG\cite{jiang2020local} is a successful method of single object reconstruction from its sparse point observations, and it can also achieve state of the art performance in scene reconstruction. However, despite the maturity of scene reconstruction methods from RGB-D scan or partial pointcloud, their use is limited, since observing such input requires special hardware, such as LiDARs or depth cameras.
+Reconstructing the scene with a sequence of RGB pictures, which contains the information of the scene, is a natural idea. Atlas\cite{murez2020atlas} tries to project the features extracted by CNN from those 2D pictures back to the 3D voxel space. It then uses moving average to combine those features together, and then feeds the combined features into a 3D CNN, in which scene reconstruction and voxel label prediction are conducted simultaneously. Recently, the technics from traditional graphics are often incorporated into neural network designs. NSVF\cite{liu2020neural}, for example, utilizes sparse voxel octree structure to accelerate the rendering speed. Nevertheless, scene reconstruction from a RGB picture sequence often requires the exact camera poses of all the pictures. Since exact camera poses require the special effort of camera calibration to obtained, the use of this kind of methods are limited.
+Recently, scene reconstruction based on a single RGB image has emerged. \cite{shin20193d} tries to conduct a multi-layer depth map of the scene based on the image. It then constructs several artificial pictures of the scene at different camera poses using the depth map, and uses transformer to reconstruct the whole scene based on the artificial RGB image sequence. CoReNet\cite{popov2020corenet} introduces a novel skip connection method based on ray tracing, which has achieved fine performance in terms of the reconstruction of simple scenes with only a few objects. Furthermore, when it comes to simple scene reconstruction, \cite{engelmann2020points} has reached the state of the art performance. It first detects objects using keypoint detection, and then retrieves the most approximate shapes of all the detected objects. Lastly, it introduces collision loss to fix the relative positions of the objects, so that objects will not collide or intersect with each other in the reconstructed scene. Since the input is easy to obtain, scene reconstruction technics based on a single RGB image can be widely used in robotics, AR and MR, especially in mobile phone MR applications and autonomous embedded systems, making researches in this field critical.
+
+
+
+\section{Monocular 3D object detection}
+Detecting 3D objects from a single RGB picture is crucial in robotics and autonomous driving. Based on Fast-RCNN\cite{DBLP:journals/corr/Girshick15}, which is a widely applied 2D object detection method, 3D-RCNN\cite{8578473} is developed to conduct the 3D object detection and reconstruction task. It can obtain both the place and the pose of the 3D objects, and it introduces Render-and-Compare loss to further improve the detection results. Pseudo-LiDAR\cite{wang2020pseudolidar} tries to use the method introduced by DRON\cite{fu2018deep} to generate the depth map from a single RGB image. Then it combines the image and the depth map together to get an artificial LiDAR representation, so as to detect the objects. Based on the Pseudo-LiDAR representation, RefinedMPL\cite{vianney2019refinedmpl} combines supervised and unsupervised methods to further improve the detection performance. CenterNet\cite{DBLP:journals/corr/abs-1904-07850}, however, takes a different approach by modeling one object as a single point, which is the center point of its bounding box. It uses keypoint estimation to find those points, thus enabling the regression of the bounding box and the rotation matrix.
+
+\section{Layout estimation}
+Estimating the layout of a 3D scene, including the corners, the edges and the planes, is an important and newly emerged task in scene reconstruction. Based on Mask R-CNN\cite{he2017mask}, PlaneRCNN\cite{liu2019planercnn} can reconstruct the planar regions of a scene giving a single RGB image of the scene. LCNN\cite{zhou2020endtoend} enables us to obtain a vectorized wireframe of the scene. SceneCAD\cite{avetisyan2020scenecad}, however, introduces a novel method to estimate the corners, the edges and the planes of the scene in a single procedure. 
+
+\section{3D shape selection}
+Instead of reconstructing each object directly after detection, reconstructing the objects indirectly by selecting from the database is a reliable approach, especially in scene reconstruction from a single RGB image, where objects suffer from occlusion seriously. As is shown in \cite{tatarchenko2019singleview}, traditional selection methods, such as clustering, retrieval and nearest neighbor, are not inferior in comparison with the state of the art reconstruction methods. As for clustering, K-means algorithm\cite{mcqueen1967smc} is a classical and good choice. As for retrieval, ShapeFlow\cite{jiang2020shapeflow} proposes an effective embedding, retrieval and deformation method. 
+
+
+\section{3D object place fixation}
+Due to the inaccuracy of object detection and shape selection, errors that may make our result unrealistic can occur. For example, two objects may intersect with each other, and an object originally lying on a table may be hanging in the air in our reconstruction result. Therefore, object place fixation is an important task. \cite{engelmann2020points} introduces collision loss to avoid collision and intersection of the objects. SceneCAD\cite{avetisyan2020scenecad} applies graph neural network to model both the vertical support relationship, such as that an object is lying on a table, and the horizontal touch relationship among the objects, such as that a chair is placed adjacent to the wall.
+\cite{zhang2020geolayout}
+\cite{liu2019planercnn}
+\cite{zhou2020endtoend}
+\cite{DBLP:journals/corr/LinCDWQH17}
+
+\bibliographystyle{unsrtnat}
+\bibliography{ref/appendix}
+
+\end{survey}

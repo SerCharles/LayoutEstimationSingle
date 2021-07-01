@@ -1,0 +1,280 @@
+% !TeX root = ../main.tex
+
+\chapter{引言}
+
+\section{三维室内空间布局估计简介}
+
+三维室内空间布局估计（3D Room Layout Estimation）是计算机视觉中一个重要的任务。这个任务的目标是给定一个室内场景的部分信息，运用计算机视觉的算法，得到场景的框架信息。输入的场景信息一般有以下几类：使用三维激光扫描仪（LiDAR）得到的三维点云数据、使用深度相机得到的深度图、使用普通相机得到的二维图像信息等。要求得的场景框架信息也有以下几类：面类信息（包括墙、门窗、天花板、地板等）、线类信息（包括墙沿、门框等）和点类信息（包括墙角等）。
+
+\begin{figure}
+  \centering
+  \label{example}
+  \includegraphics[width=0.4\linewidth]{example.pdf}
+  \caption{三维室内空间布局估计的示意图，图中重建了场景的点、线、面信息\cite{avetisyan2020scenecad}}
+\end{figure}
+
+三维室内空间布局估计技术在计算机辅助设计（CAD）、增强现实（AR）等领域有非常巨大的应用潜力。这个技术能够估计出场景的框架信息，再结合三维实例分割等技术，可以实现对场景物体的随意移动、替换等，进而在计算机辅助设计和增强现实等领域发挥作用。
+
+
+\section{三维室内空间布局估计研究现状}
+早期关于三维室内空间布局估计的研究基于曼哈顿假设\cite{Coughlan2000TheMW}（Manhattan World Assumption）。这个假设认为整个场景有三个相互垂直的主方向，场景中的任何一个平面都一定与三个主方向之一垂直，这也意味着场景中的任何两个平面要么互相平行，要么互相垂直。2006年，斯坦福大学的研究者们提出了使用动态贝叶斯网络预测场景中的地板、墙以及二者交界的方法\cite{1641050}，这让输入单张图片进行室内空间布局估计成为可能。2014年，普林斯顿大学的研究者们开始使用全景图片来预测整个室内场景的空间布局估计\cite{zhang2014panocontext}。2019年，台湾清华大学的研究者们进一步用神经网络的方法，用全景图片进行三维室内空间布局估计。他们使用三个一维向量来分别表示墙和地板、屋顶和墙、还有墙和墙的边界\cite{SunHSC19}，这种方法不仅效果好，而且计算复杂度低，速度快。
+\begin{figure}
+  \centering
+  \label{manhattan}
+  \includegraphics[width=0.7\linewidth]{manhattan.pdf}
+  \caption{基于曼哈顿假设，使用全景图完成整个场景的空间布局估计示意图\cite{SunHSC19}}
+\end{figure}
+
+对于不满足曼哈顿假设的三维室内场景布局估计，也有许多的研究。PlaneNet\cite{liu2018planenet}侧重于室内场景的平面预测。这种方法以场景的单张图片作为输入，使用端到端的神经网络同时进行平面参数预测、平面实例分割和非平面区域的深度预测，但是其仍有局限性：只能预测一个固定数目的平面，对于较为复杂、平面较多的场景难以应用。PlaneRCNN\cite{liu2019planercnn}在其基础上做了改进，能够预测任意多个平面。其将经典的实例分割技术Mask R-CNN\cite{he2018mask}应用在了平面预测上，并且同时进行深度和法向的预测。结合平面实例分割、深度预测、法向预测的结果，PlaneRCNN进一步进行聚类来得到所有的平面信息。最后，PlaneRCNN综合考虑一个场景相邻图片预测得到的平面结果的一致性，进一步提高平面预测的鲁棒性。
+
+\begin{figure}
+  \centering
+  \label{planercnn}
+  \includegraphics[width=0.7\linewidth]{wireframe.pdf}
+  \caption{场景的平面预测示意图\cite{liu2019planercnn}和线框估计示意图\cite{zhou2021endtoend}}
+\end{figure}
+
+2018年，上海科技大学的研究者们提出了线框估计这一任务\cite{wireframe_cvpr18}。这个任务以场景的单张图片作为输入，目的是预测图片中所有物体的线框和交点。2019年，伯克利大学的研究者们提出了L-CNN\cite{zhou2021endtoend}，其使用CNN网络进行特征提取，然后预测出整个场景的所有关键点，并且根据关键点生成所有的直线，最后对直线进行二分类，筛选出是物体线框的直线和对应的交点。
+
+
+以上所说的平面预测与线框估计虽然与室内场景布局估计有着密不可分的关系，但是其并未去掉前景物体，而我们所要研究的室内场景布局估计是不考虑前景物体，只考虑背景的。GeoLayout\cite{zhang2020geolayout}提出了基于一个场景的单张图片进行室内场景布局估计的方法。这种方法尝试预测图片每个像素对应的背景所在平面的参数，进而通过聚类和平均获取整个场景的平面方程，之后通过对平面求交得到交线、交点等。SceneCAD\cite{avetisyan2020scenecad}则提出了基于一个场景的三维点云进行室内场景布局估计的方法。
+
+\section{图像语义分割、深度估计和法向预测的研究现状}
+图像语义分割、深度估计和法向预测与三维室内空间布局估计密切相关。因此，本部分将介绍这几方面的研究现状
+\subsection{图像语义分割}
+\label{1.3.1}
+图像语义分割是计算机视觉领域的经典问题，它要求将输入的图片的每个像素尽可能正确地分成一个个类别。
+
+\begin{figure}
+  \centering
+  \label{segmentation}
+  \includegraphics[width=1.0\linewidth]{segmentation.pdf}
+  \caption{本文的图像语义分割任务示意图，其中右侧图片的白色像素代表其他物体，黑色像素代表背景}
+\end{figure}
+
+在深度学习刚出现之时，语义分割是一个难度较大的问题。一方面，卷积神经网络（CNN)需要不断给图片进行下采样以提取特征，下采样会降低特征图的大小，进而导致信息丢失。另一方面，最终需要给每个像素一个标签，使用全连接网络的计算代价又很大。
+2015年发表的FCN\cite{long2015fully}改变了这一现状。FCN的流程分为下采样-上采样两阶段。在下采样阶段，FCN使用若干卷积层不断对图片进行下采样，提取图片不同层次的特征。之后，FCN利用反卷积进行上采样，上采样从最高层次，也就是大小最小的特征图开始，不断融合上更低层次、大小更大的特征，最终得到每个像素的分类概率，再通过softmax得到分类结果。FCN全部使用卷积网络，降低了计算量。而特征融合的方法有效的解决了信息丢失的问题。
+
+\begin{figure}
+  \centering
+  \label{fcn}
+  \includegraphics[width=0.7\linewidth]{FCN.pdf}
+  \caption{FCN\cite{long2015fully}网络结构示意图}
+\end{figure}
+
+同年，U-Net\cite{ronneberger2015unet}在FCN的基础上做了进一步改进。U-Net提出了跳跃连接（Skip Connection）机制，将下采样和上采样阶段大小相同的特征图通过叠加的方法融合到一起，进而进一步改善了特征融合的效果。
+
+\begin{figure}
+  \centering
+  \label{unet}
+  \includegraphics[width=0.7\linewidth]{UNet.pdf}
+  \caption{U-Net\cite{ronneberger2015unet}网络结构示意图}
+\end{figure}
+
+而FCN和U-Net的方法仍然有不足之处：因为卷积层的感受野较小，因此想要提取图片的高层特征，不得不频繁进行下采样，而这样必然导致特征丢失；而使用特征融合的方法又会让网络更复杂，增加计算量和训练网络的难度。针对这个问题，2017年发表的DeepLab\cite{chen2016deeplab} 提出了空洞空间卷积池化金字塔（Atrous Spatial Pyramid Pooling （ASPP））这一方法。ASPP通过引入三个不同尺度的空洞卷积（Dilated Convolution）
+层来实现扩大感受野，得到高层次特征的过程。同时，ASPP也保留了原有的下采样-上采样机制，不过ASPP使用了一个平均池化（Average Pooling）来降低计算复杂度，进而让这个机制更好地提取全局特征。最终，ASPP引入了1*1卷积来进行特征融合，更加灵活。
+
+\begin{figure}
+  \centering
+  \label{aspp}
+  \includegraphics[width=0.8\linewidth]{ASPP.pdf}
+  \caption{ASPP\cite{fu2018deep}网络结构示意图}
+\end{figure}
+
+\subsection{深度估计}
+\label{1.3.2}
+
+作为从二维图像中获取三维信息的重要手段，深度估计一直是计算机视觉的研究热点。深度估计要求输入一张二维图片，尽可能准确地估计出每个像素对应的深度，是一个回归问题。
+
+在深度学习快速发展之前，深度估计的研究主要依赖图片像素点之间的几何关系或者人工设定的特征展开。而近年来，针对深度估计的研究主要应用深度学习的方法。2016年，慕尼黑大学的研究者们\cite{laina2016deeper}利用CNN进行下采样和上采样，最后回归得到深度。2017年发表的DenseReg\cite{güler2017densereg}也是利用CNN进行深度估计，不过其针对CNN对于分类问题处理的较好的特点，将语义分割和深度估计有机结合起来，取得了较好的效果。
+
+2018年发表的DORN\cite{fu2018deep}则利用有序回归（Ordinal Regression）的方法来进行深度估计。有序回归的方法，本质上是把深度估计这样一个回归问题转化为一个分类问题，预测深度值在哪个区间之内，然后用区间中点来代替深度值。具体的流程如下：
+
+首先，已知每个像素的深度位于$[\alpha, \beta](0 \le \alpha \le \beta) $这一区间内，我们要把这个区间划分为若干个小区间。区间划分有两种方法：等距离散（Uniform Discretization （UD））和增距离散（Spacing-Increasing Discretization （SID））。UD顾名思义，就是将区间均匀划分为若干小区间。而增距离散则是考虑到深度预测的固有特点：对于较小的深度，通常能用于预测的信息较多，容易预测准确；而对于较大的深度，则缺乏有效准确预测其的信息，难以预测准确。因此，为了防止少数较大深度预测的不够准确导致网络难以训练、难以收敛，必须降低较大深度对应的权重，SID就是实现这一目标的好方法。UD和SID的具体划分公式如下：
+
+
+\begin{equation}
+\label{sid}
+\left\{\begin{array}{l}
+
+UD: t_i = \alpha + (\beta - \alpha) * i  / K \\[0.3cm]
+SID: t_i = e^{log(\alpha) + log(\beta / \alpha) * i / K}
+\end{array}\right.
+\end{equation}
+
+其中$K$是区间个数，$t_i \in {{t_0, t_i, \dots, t_K}}$代表第$i$段区间的下界，也就意味着第$i$段区间的范围是$[t_{i}, t_{i + 1}]$。
+
+之后，有序回归的损失函数如下定义：设$K$是区间个数，则网络能将第$i$个像素$x_i$映射成${x_{i}^{0}, x_{i}^{1}, \dots, x_{i}^{2K - 1}}$这$2K$个值。我们用这些值计算出相应的概率和损失函数：
+\textbf{\begin{equation}
+\label{ordinalregression}
+\left\{\begin{array}{l}
+\mathcal{P}^{k}_{i} = P(\hat{l_{i}} > k) = \frac{e^{x_{i}^{2k+1}}}{e^{x_{i}^{2k}} + e^{x_{i}^{2k+1}}} \\[0.2cm]
+\mathcal{L}_{depth}(x_i) = \sum_{k=0}^{l_i - 1} log(\mathcal{P}^{k}_{i}) + \sum_{k = l_i}^{K - 1}(log(1 - \mathcal{P}^{k}_{i}))
+\end{array}\right.
+\end{equation}}
+其中$\mathcal{L}_{depth}(x_i)$为第$i$个像素对应的损失函数，$l_i$为第$i$个像素实际深度对应的区间编号，$\hat{l_{i}}$为预测的第$i$个像素对应的区间编号。
+
+最终，我们使用区间中点来代表每个像素的深度，具体表示如下：
+
+\textbf{\begin{equation}
+\label{ktc}
+\left\{\begin{array}{l}
+\hat{l}_i = \sum_{k=0}^{K-1}\eta(\mathcal{P}_i^{k} \geq 0.5) \\[0.2cm]
+\hat{d}_i = (t_{\hat{l}_i} +  t_{\hat{l}_i + 1}) / 2 + \alpha 
+\end{array}\right.
+\end{equation}}
+其中$\eta$是示性函数，$t_i$为第$i$个区间的下界。
+
+
+
+
+
+
+
+
+
+\subsection{法向预测}
+\label{1.3.3}
+
+法向预测也是通过二维图像来理解三维世界的重要任务，其要求输入一张二维图片，能够尽可能准确地预测出每个像素对应的法向，是一个回归问题。
+
+法向预测的研究通常与其他任务的研究，比如图像语义分割、深度估计相结合。一方面，法向估计这一任务本身也和图像语义分割、深度估计有一定相似性。2015年，纽约大学的研究者们就提出了用同一个多尺度卷积神经网络架构来进行深度估计、图像分割和法向预测的方法\cite{eigen2015predicting}，这三个任务只有最终的结果计算方式和损失函数不同，前面的网络架构完全一致。
+
+另一方面，在做好图像语义分割的前提下，法向和深度可以进行互相转化：假设一张图片的若干个像素位于同一平面内，那么这些像素对应的深度和法向可以互相转化。2018年发表的GeoNet\cite{qi2018geonet}就利用了这一转化关系，改进了法向预测的效果。具体的转化方法如下：
+
+首先，已知相机内参的情况下，每个在图像上坐标为$[u_i, v_i]$的像素，其在相机空间的坐标$x_i, y_i$如下：
+\begin{equation}
+\label{ktc}
+\left\{\begin{array}{l}
+x_i = (u_i - x_0)  / f_x \\[0.3cm]
+y_i = (v_i - y_0)  / f_x 
+\end{array}\right.
+\end{equation}
+其中$x_0, y_0, f_x, f_y$为相机内参的一部分，$x_0, y_0$代表相机在x轴、y轴的成像中心，$f_x, f_y$代表相机在x轴、y轴的焦距。
+
+之后，假设$K$个像素点${p_1, p_2, \dots , p_K}$位于同一平面上，已知他们的深度${z_1, z_2, \dots , z_K}$，那么他们的法向满足这样一个线性方程组：
+\begin{equation}
+\label{ktc}
+\left\{\begin{array}{l}
+A = 
+    \begin{bmatrix}
+    x_1 & y_1 & z_1 \\
+    x_2 & y_2 & z_2 \\
+    \dots & \dots & \dots \\
+    x_K & y_K & z_K
+    \end{bmatrix}\\[0.5cm]
+
+An = b
+\end{array}\right.
+\end{equation}
+其中$n$为整个平面的法向量，满足$||n|| = 1$。$b$是一个常量。
+
+最终，仍旧假设$K$个像素点${p_1, p_2, \dots , p_K}$位于同一平面上，这个平面的法向量为$n = [n_x, n_y, n_z]$，$||n|| = 1$，那么这个平面任意两不同点$p_i, p_j$的深度$z_i, z_j$都满足以下方程：
+\begin{equation}
+\label{ktc}
+n_x(x_i - x_j) + n_y(y_i - y_j) + n_z(z_i - z_j) = 0
+\end{equation}
+
+
+
+\begin{figure}
+  \centering
+  \label{depthnorm}
+  \includegraphics[width=0.7\linewidth]{depthnorm.pdf}
+  \caption{深度和法向互相转化的示意图\cite{qi2018geonet}}
+\end{figure}
+
+\section{本文使用的现有数据集}
+\subsection{ScanNet}
+ScanNet\cite{dai2017scannet}是普林斯顿大学、斯坦福大学和慕尼黑工业大学于2017年制作的一个室内三维场景数据集。这个数据集由真实的三维场景扫描得来，其包含1513个场景的三维扫描数据，以及对应的250万余组二维图像数据。
+
+其三维扫描数据包含以下信息：
+\begin{itemize}
+    \item 场景的三维面片数据
+    \item 场景的三维实例分割结果
+    \item 每个三维实例的类别、对应的几何信息
+\end{itemize}
+
+其二维图像数据包含以下信息：
+\begin{itemize}
+    \item 不同拍摄角度的相机参数（包括内参和外参）
+    \item 不同角度拍摄的RGB图片
+    \item 不同拍摄角度的深度图
+    \item 不同拍摄角度的语义分割结果
+    \item 不同拍摄角度的实例分割结果
+\end{itemize}
+
+\begin{figure}
+  \centering
+  \label{scannet}
+  \includegraphics[width=1.0\linewidth]{scannet.pdf}
+  \caption{ScanNet\cite{dai2017scannet}数据示意图}
+\end{figure}
+
+\subsection{Matterport3D}
+\label{1.4.2}
+Matterport3D\cite{Matterport3D}是普林斯顿大学、斯坦福大学和慕尼黑工业大学于2017年制作的另一个室内三维场景数据集。它包含90个建筑的三维扫描数据，以及对应的194400组二维图像数据。和ScanNet一样，这个数据集也是由真实的三维场景扫描得来。不过有所不同的是，ScanNet的每个场景只是一个单独的房间或者一套小公寓，而Matterport3D的每个场景都是一个有许多房间的完整建筑，这也让走廊、楼梯等部分的三维识别、重建等任务成为可能，而其房间的丰富性也让区域识别等任务成为可能。
+
+其三维扫描数据包含以下信息：
+\begin{itemize}
+    \item 场景的三维面片数据
+    \item 场景的三维实例分割结果
+    \item 每个三维实例的类别、对应的几何信息
+    \item 场景的区域分割结果
+    \item 每个区域的类别、对应的集合信息
+    
+\end{itemize}
+
+其二维图像数据包含以下信息：
+\begin{itemize}
+    \item 不同拍摄角度的相机参数（包括内参和外参）
+    \item 不同角度拍摄的RGB图片
+    \item 不同拍摄角度的深度图
+    \item 不同拍摄角度的法向图
+    \item 不同拍摄角度的语义分割结果
+    \item 不同拍摄角度的实例分割结果
+    \item 整个场景的全景图
+\end{itemize}
+
+\begin{figure}
+  \centering
+  \label{matterport}
+  \includegraphics[width=1.0\linewidth]{matterport.pdf}
+  \caption{Matterport3D\cite{Matterport3D}数据示意图}
+\end{figure}
+
+\subsection{Matterport3D-Layout}
+2020年，山东大学的研究者们在Matterport3D\cite{Matterport3D}数据集的基础上制作了Matterport3D-Layout\cite{zhang2020geolayout}数据集，专门用于三维室内空间布局估计。除了Matterport3D数据集原有的数据之外，Matterport3D-Layout数据集还通过人工标注和机器自动标注相结合的方式，增加了以下的内容：
+\begin{itemize}
+    \item 不同拍摄角度的背景深度信息
+    \item 不同拍摄角度的背景分割结果
+    \item 不同拍摄角度的平面参数、角点位置等
+\end{itemize}
+但是这个数据集的规模较小，只有五千多组以上的二维图像信息。
+
+这些关于背景深度信息、分割结果的数据让直接预测场景的背景信息成为可能，大大助力了三维室内空间布局估计的研究。
+
+\begin{figure}
+  \centering
+  \label{geolayout}
+  \includegraphics[width=0.8\linewidth]{geolayout.pdf}
+  \caption{Matterport3D-Layout\cite{zhang2020geolayout}数据示意图}
+\end{figure}
+
+
+
+\section{研究内容}
+首先，因为在实际情况中，不符合曼哈顿假设的场景很常见，因此本文的研究并不基于曼哈顿假设。其次，由于SceneCAD\cite{avetisyan2020scenecad}已经把从场景三维点云出发进行场景布局估计这一问题研究的较为完善了，本文侧重于基于一个场景的单张图片进行室内场景布局估计---这也能大大方便手机端室内AR应用的研发。最终，由于近年来深度神经网络发展迅速，相比传统的计算机视觉、图形学、统计学习方法，能更好地解决深度估计、法向估计、图像分割等和室内场景布局估计密切相关的问题，因此本文基于深度神经网络开展方法设计和研究。
+
+由于图像语义分割、深度估计、法向预测与本文的任务--室内场景布局估计关系十分密切，而且这三者之间也有较为密切的联系，本文将基于这三个任务开展研究。在完成这三个任务的前提下，本文设计了一个基于聚类和几何处理的后处理方法，以得到室内场景的布局信息。
+
+\begin{figure}
+  \centering
+  \label{method}
+  \includegraphics[width=1.0\linewidth]{method.pdf}
+  \caption{本文方法的示意图}
+\end{figure}
+
+\section{论文结构安排}
+
+本文的结构如下。第二章介绍了本文在数据集自动标注方面做的工作。第三章介绍了本文的主要方法。第四章介绍了本文的实验结果，对本文的工作进行了总结，分析了本文目前工作的不足和局限性，以及改进的前景与展望。

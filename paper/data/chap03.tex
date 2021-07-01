@@ -1,0 +1,144 @@
+% !TeX root = ../main.tex
+
+\chapter{主要研究方法}
+本文首先设计了一套神经网络框架进行图像语义分割、深度估计和法向预测。之后本文设计了一个基于聚类和光线投射的后处理方法，得到平面的方程、各个像素对应的背景平面等信息。
+
+在本文的方法中，语义分割的任务被简化成一个二分类问题：正确判断输入图片的每个像素是背景（墙、天花板、地板、门窗等）还是其他物体。本文的方法也需要深度估计和法向预测，不过只需要正确估计背景像素的深度和法向即可。
+
+
+\section{神经网络框架}
+本文的神经网络框架采用了\ref{1.3.1}提到的ASPP框架，大致网络结构和DORN\cite{fu2018deep}相同，神经网络结构如下：
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.2\linewidth]{backbone.pdf}
+  \caption{本文的神经网络框架示意图}
+  \label{backbone}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.0\linewidth]{encoder.pdf}
+  \caption{本文的神经网络的下采样部分示意图}
+  \label{encoder}
+\end{figure}
+
+\section{损失函数}
+\label{3.2}
+损失函数方面，首先是语义分割损失函数，本文使用了二分类的交叉熵损失函数：
+\begin{equation}
+\label{segloss}
+\left\{\begin{array}{l}
+p_i = \frac{e^{y_{i1}}}{e^{y_{i1}} + e^{y_{i0}}}\\[0.3cm]
+\mathcal{L}_{seg}(i) = -l_i * log(p_i) - (1 - l_i) * log(1 - p_i)\\[0.3cm]
+\mathcal{L}_{seg} = \sum_{i=1}^{w*h}\mathcal{L}_{seg}(i)
+\end{array}\right.
+\end{equation}
+其中$y_{i1}$代表第$i$个像素被预测为背景（正例）的预测值，$y_{i0}$代表第$i$个像素被预测为其他物体（负例）的预测值，$p_i$代表第$i$个像素被预测为背景（正例）的概率。$l_i$代表第$i$个像素的实际标签，如果是背景就是$1$，否则如果是其他物体就是$0$。$\mathcal{L}_{seg}(i)$代表第$i$个像素的语义分割损失函数，$\mathcal{L}_{seg}$代表整体的语义分割损失函数。
+
+其次是深度估计损失函数，本文使用了\ref{1.3.2}提出的有序回归损失函数，其中UD和SID我们都做了尝试和实验，将在第四章进行比较：
+\begin{equation}
+\label{depthloss}
+\left\{\begin{array}{l}
+
+\mathcal{L}_{depth_{gt}} = \sum_{i=1}^{w*h}\eta(l_i) * \mathcal{L}_{depth}(i)\\[0.3cm]
+\mathcal{L}_{depth_{mine}} = \sum_{i=1}^{w*h}\eta(\hat{l_i}) * \mathcal{L}_{depth}(i)\\[0.3cm]
+\mathcal{L}_{depth} = (\mathcal{L}_{depth_{gt}} + \mathcal{L}_{depth_{mine}}) / 2
+\end{array}\right.
+\end{equation}
+其中$\eta$为示性函数，$l_i$代表第$i$个像素的实际标签，$\hat{l_i}$代表之前图像语义分割对第$i$个像素预测的标签，$\mathcal{L}_{depth}(i)$代表第$i$个像素的深度估计损失函数，具体定义与\ref{1.3.2}中相同，这里不再赘述。
+
+$\mathcal{L}_{depth}$代表整体的深度估计损失函数，其由两部分组成，一部分是$\mathcal{L}_{depth_{gt}}$，也就是所有实际上是背景的像素的深度估计损失函数之和。另一部分是$\mathcal{L}_{depth_{mine}}$，也就是所有在本文的语义分割环节中被预测为背景的像素的深度估计损失函数之和。
+
+之后是法向预测损失函数，本文使用欧式距离度量每个像素的实际法向和预测的法向：
+\begin{equation}
+\label{normloss}
+\left\{\begin{array}{l}
+\mathcal{L}_{norm}(i) = ||n^i - \hat{n^i}||^{2}\\[0.3cm]
+\mathcal{L}_{norm_{gt}} = \sum_{i=1}^{w*h}\eta(l_i) * \mathcal{L}_{norm}(i)\\[0.3cm]
+\mathcal{L}_{norm_{mine}} = \sum_{i=1}^{w*h}\eta(\hat{l_i}) * \mathcal{L}_{norm}(i)\\[0.3cm]
+\mathcal{L}_{norm} = (\mathcal{L}_{norm_{gt}} + \mathcal{L}_{norm_{mine}}) / 2
+\end{array}\right.
+\end{equation}
+其中$n^i=[n^i_x, n^i_y, n^i_z], ||n^i||=1$为第$i$个像素的实际法向量,$\hat{n}^i=[\hat{n}^i_x, \hat{n}^i_y, \hat{n}^i_z], ||\hat{n}^i||=1$为第$i$个像素的预测法向量，$\mathcal{L}_{norm}(i)$为第$i$个像素的法向预测损失函数。
+$\mathcal{L}_{norm}$代表整体的法向预测损失函数，其由两部分组成，一部分是$\mathcal{L}_{norm_{gt}}$，另一部分是$\mathcal{L}_{norm_{mine}}$，这两部分含义与深度预测相同。
+
+最终是区分损失函数。
+在已知相机内参、法向、深度的前提下，每个像素对应的平面方程$F_i=[A_i, B_i, C_i, D_i]$（满足$A_i * x_i + B_i * y_i + C_i * z_i + D_i=0$）是能计算出来的，具体流程参见\ref{3.4}。本文在后续的后处理流程中会对每个像素对应的平面方程进行聚类操作。为了让聚类结果尽可能与实际情况相符，本文认为，应该尽可能让实际上位于同一平面上的像素点的平面方程更加接近，让不同平面的平面方程更加疏远。因此本文设计了这一损失函数，具体定义如下：
+\begin{equation}
+\label{disloss}
+\left\{\begin{array}{l}
+\mathcal{L}_{in} = \frac{1}{C}\sum_{c=1}^{C}max(|F_{c_i}-F^c|-\delta_v, 0)\\[0.3cm]
+\mathcal{L}_{out} = \frac{1}{C(C-1)}\sum_{c_A=1}^{C}\sum_{c_A=1}^{C}max(\delta_d |F^{c_A}-F^{c_B}|, 0)\\[0.3cm]
+\mathcal{L}_{dis} =\mathcal{L}_{in} + \mathcal{L}_{out}
+\end{array}\right.
+\end{equation}
+在这里，本文用到了\ref{2.3}提到的Matterport3D-Layout\cite{zhang2020geolayout}中标注的平面分割信息（考虑前景物体）。$C$为平面的个数。$n_c$为属于第$c$个平面，而且在图像中属于背景的像素个数，$F_{c_i}$为第$c$个平面的第$i$个像素的平面方程。$F^c$为第$c$个平面的平面方程，由所有属于第$c$个平面的像素的平面方程取平均得来。$\delta_v$、$\delta_d$为两个超参数，本文分别取$0.1$， $1.0$。
+
+由于图像语义分割、深度估计和法向预测三者有密切的联系，本文对这三者进行联合训练。最终的损失函数为
+\begin{equation}
+\label{loss}
+\mathcal{L} = \lambda_{seg} * \mathcal{L}_{seg} + 
+\lambda_{norm} * \mathcal{L}_{norm} + 
+\lambda_{depth} * \mathcal{L}_{depth} +
+\lambda_{dis} * \mathcal{L}_{dis}
+\end{equation}
+其中$\lambda_{seg}$、$\lambda_{depth}$、$\lambda_{norm}$、$\lambda_{dis}$分别为四者损失函数的权重，本文分别取$1.0$、$0.2$、$1.0$、$1.0$。
+
+\section{训练方式}
+本文的神经网络使用Matterport3D-Layout\cite{zhang2020geolayout}数据集进行训练，训练-测试集的划分标准与官方文档一致，每张二维数据都被缩放到了320*240，使用Adam\cite{kingma2017adam}优化算法，学习率为0.0001，共训练200代（epoch），没有使用学习率衰减和正则化方法。
+
+由于Matterport3D-Layout\cite{zhang2020geolayout}的规模较小，为了防止可能出现的过拟合问题，本文使用\ref{2.2}中提到的，修改后的Matterport3D\cite{Matterport3D}数据集进行预训练。预训练的数据去除了会在Matterport3D-Layout\cite{zhang2020geolayout}中出现的数据，以及部分有噪声的数据，共得到17万余组二维数据。本文随机选取90$\%$的数据作为训练集，剩下10$\%$的数据作为测试集。每张二维数据都被缩放到了320*240，使用Adam\cite{kingma2017adam}优化算法，学习率为0.0001，共训练20代（epoch），没有使用学习率衰减和正则化方法。
+
+预训练的网络结构与正式训练一致，但是损失函数有所不同：
+\begin{equation}
+\label{pretrainloss}
+\left\{\begin{array}{l}
+
+\mathcal{L}_{seg} = \sum_{i=1}^{w*h}\mathcal{L}_{seg}(i)\\[0.3cm]
+\mathcal{L}_{depth} = \sum_{i=1}^{w*h}\mathcal{L}_{depth}(i)\\[0.3cm]
+\mathcal{L}_{norm} = \sum_{i=1}^{w*h}\mathcal{L}_{norm}(i)\\[0.3cm]
+\mathcal{L} = \lambda_{seg} * \mathcal{L}_{seg} + 
+\lambda_{norm} * \mathcal{L}_{norm} + 
+\lambda_{depth} * \mathcal{L}_{depth}
+\end{array}\right.
+\end{equation}
+其中$\mathcal{L}_{seg}(i)$、$\mathcal{L}_{depth}(i)$、$\mathcal{L}_{norm}(i)$分别为第$i$个像素的图像语义分割、深度估计、法向预测损失函数，定义与\ref{3.2}中一致。$\mathcal{L}_{seg}$、$\mathcal{L}_{depth}$、$\mathcal{L}_{norm}$分别为整体的图像语义分割、深度估计、法向预测损失函数。$\lambda_{seg}$、$\lambda_{depth}$、$\lambda_{norm}$分别为三者损失函数的权重，与公式\ref{loss}中一致，分别取1.0、0.2、1.0。
+
+\section{后处理}
+\label{3.4}
+通过上述的神经网络，我们能够得到当前图像每个像素的语义分割、深度、法向结果。本节将介绍本文提出的基于聚类和光线投射的后处理方法。
+
+首先，本文计算出当前图像每个像素对应的平面方程，公式如下：
+\begin{equation}
+\label{plane}
+\left\{\begin{array}{l}
+A_i = n_x^i\\[0.3cm]
+B_i = n_y^i\\[0.3cm]
+C_i = n_z^i\\[0.3cm]
+x_i = (u_i - x_0)  / f_x * z_i\\[0.3cm]
+y_i = (v_i - y_0)  / f_x * z_i\\[0.3cm]
+D_i = -A_i * x_i - B_i * y_i - C_i * z_i
+\end{array}\right.
+\end{equation}
+其中$x_0, y_0, f_x, f_y$为相机内参的一部分，$x_0, y_0$代表相机在x轴、y轴的成像中心，$f_x, f_y$代表相机在x轴、y轴的焦距。$u_i, v_i$为第$i$个像素的坐标,$[x_i, y_i, z_i]$为其在相机空间的坐标，其中$z_i$为其在相机空间的深度，$n_i = [n_x^i, n_y^i, n_z^i], ||n_i||=1$为其在相机空间的法向，$F_i=[A_i, B_i, C_i, D_i]$为其在相机空间对应的平面方程，满足$A_i * x_i + B_i * y_i + C_i * z_i + D_i=0$
+
+之后，本文对所有被分类为背景的像素，根据求出的平面方程进行聚类。由于不同平面的方程相差较大，因此只要先前的语义分割、深度、法向预测都较为准确，聚类结果必然也较为准确。\ref{2.3}设计的区分损失函数更是进一步保证了这一点。因为每个场景内平面的数目未知，因此本文选择均值漂移聚类（Mean Shift Clustering）\cite{10.1109/34.400568}，因为这种聚类不需要事先设置类的个数。本文会舍弃像素点个数较少的类（少于图片总数5\%的类）以防止噪声干扰后续结果。
+聚类完毕后，本文将每个类中的像素点对应的平面方程求平均，作为这个平面的方程。
+
+得到各个平面的方程后，可以通过光线投射的方法求得各个平面的范围。已知平面$c$的方程为$A_cx+ B_cy + C_cz + D_c =0$，第$i$个像素在图片上的坐标为$(u_i, v_i)$，那么，在已知相机内参$x_0, y_0, f_x, f_y$的情况下，可以通过以下公式求得从这个像素看向平面的深度：
+\begin{equation}
+\label{ktc}
+z_i = -\frac{D_c}{A_c * \frac{u_i - x_0}{f_x} + B_c * \frac{v_i - y_0}{f_y} + C_c}
+\end{equation}
+最小的正深度$argmin(z_i)$对应的平面，就是通过第$i$个像素看过去，能看到的第一个平面，也就是第$i$个像素所在的平面。
+
+求得平面之后，求框线和角点就较为简单了。求任意两个平面的交线即可得到框线，求框线与其他平面的交点即可得到角点。
+
+
+
+
+
+
+
+

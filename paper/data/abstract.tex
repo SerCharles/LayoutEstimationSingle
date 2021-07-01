@@ -1,0 +1,22 @@
+% !TeX root = ../main.tex
+
+% 中英文摘要和关键字
+
+\begin{abstract}
+  三维室内空间布局估计是计算机视觉的重要研究问题，在计算机辅助设计、增强现实等方面有重要应用。而这个问题又与图像语义分割、深度估计和法向预测有密不可分的关系。本文利用深度神经网络设计了一套基于图像语义分割、深度估计和法向预测的三维室内场景布局估计算法。 这个算法有预训练、正式训练和基于聚类和光线投射的后处理三个步骤，能够对于单张输入图片进行平面、线框、关键点的估计。本文还针对自身方法，在已有数据集的基础上完成了语义分割信息、背景分割信息和线框信息的数据自动标注。然而由于损失函数和后处理方法的不足，本文的方法受遮挡和噪声影响严重，有一定局限性。
+  % 关键词用“英文逗号”分隔，输出时会自动处理为正确的分隔符
+  \thusetup{
+    keywords = {三维室内空间布局估计, 图像语义分割, 深度估计, 法向预测, 深度神经网络},
+  }
+\end{abstract}
+
+\begin{abstract*}
+  Layout estimation of 3D indoor scenes is an important issue in the field of Computer Vision, which is very useful in Computer Aided Design(CAD) and Augmented Reality(AR). We have designed a method using deep neural network, which is based on semantic segmentation of pictures, depth estimation and normal estimation. This method consists pre-training, training and post processing based on clustering and ray casting. It can estimate the background planes, line frames and important points given an input image. We also have done the automatic labeling of data used in semantic labeling, background plane segmentation and line frame estimation based on current released datasets. However, due to the flaws in our loss functions and post processing methods, our method still has many limitations, such as the low performance given pictures suffering from occlusion and noises.
+
+
+
+  % Use comma as seperator when inputting
+  \thusetup{
+    keywords* = {layout estimation of 3D indoor scenes, semantic segmentation of pictures, depth estimation, normal estimation, deep neural networks},
+  }
+\end{abstract*}

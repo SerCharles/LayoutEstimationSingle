@@ -1,0 +1,250 @@
+% !TeX root = ../main.tex
+
+\chapter{实验结果和分析、总结}
+\section{图像语义分割、深度估计和法向预测的整体结果}
+首先，本文对比了本方法在图像语义分割、深度估计和法向预测三个任务上的整体结果。
+\begin{table}[h!]
+  \begin{center}
+    \caption{语义分割结果对比}
+    \begin{tabular}{|c|c|} 
+    \hline
+       & 准确率$\uparrow$\\
+      \hline
+      本文的方法 & 0.888 \\
+      \hline
+      FCN\cite{long2015fully}  & 0.903\\
+      \hline
+      U-Net\cite{ronneberger2015unet} & \textbf{0.939}\\
+      \hline
+    \end{tabular}
+    \label{seg}
+  \end{center}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{深度估计结果对比}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+       & $rms \downarrow$ & $rel \downarrow$ & $log10\downarrow$ &$\delta < 1.25 \uparrow$ &$\delta < 1.25^{2} \uparrow$&$\delta < 1.25^{3} \uparrow$\\
+      \hline
+      本文的方法 & \textbf{0.349} & 0.125 & 0.055 & 0.813& 0.943 & 0.981\\
+      \hline
+      DORN\cite{fu2018deep} & 0.509 & \textbf{0.115} & \textbf{0.051} & \textbf{0.828} & \textbf{0.965} & \textbf{0.992}\\
+      \hline
+    \end{tabular}
+    \label{depth}
+  \end{center}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{法向预测结果对比}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+       & $mean \downarrow$ & $median \downarrow$ &$rms \downarrow$&$\delta < 11.25 \uparrow$ &$\delta < 22.5 \uparrow$&$\delta < 30 \uparrow$\\
+      \hline
+      本文的方法 & 17.75 & 11.64 & 129.98 & 0.496& 0.767& 0.835\\
+      \hline
+      FrameNet\cite{huang2019framenet}  & \textbf{15.28} & \textbf{8.14} & \textbf{23.36}&\textbf{0.606} & \textbf{0.786} & \textbf{0.847}\\
+      \hline
+
+    \end{tabular}
+    \label{norm}
+  \end{center}
+\end{table}
+
+分析三个任务的结果，可以看出，语义分割和法向预测完成的结果相对较差，而深度估计完成的结果接近当前的最佳论文。语义分割完成结果较差的原因主要是数据处理的问题：预训练使用的是机器自动标注的数据，然而因为噪声其质量并不是很高，因此导致结果较差。法向预测结果较差的原因主要是方法过于简单，没有有效利用好法向和深度在几何上的相关性。
+
+\section{图像语义分割、深度估计和法向预测的对比实验}
+\subsection{三个预测目标的消融实验}
+图像语义分割、深度估计和法向预测这三个任务有着密切的关系。理论上，将这三个任务同时训练，能达到一石三鸟的效果，同时改进这三个任务的完成情况。这里，本文对比了预训练阶段同时完成这三个预测目标和只完成单一预测目标的实验结果。同时，为了比较深度估计的两个区间划分方法，SID和UD，本文也进行了消融实验，将结果一并展示。
+\begin{table}[h!]
+  \begin{center}
+    \caption{消融实验结果-语义分割}
+    \begin{tabular}{|c|c|} 
+    \hline
+       & 准确率$\uparrow$\\
+      \hline
+      一起训练 & \textbf{0.865} \\
+      \hline
+      只训练语义分割  & 0.852\\
+      \hline
+    \end{tabular}
+    \label{ablationseg}
+  \end{center}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{消融实验结果-深度估计}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+       & $rms \downarrow$ & $rel \downarrow$ & $log10\downarrow$ &$\delta < 1.25 \uparrow$ &$\delta < 1.25^{2} \uparrow$&$\delta < 1.25^{3} \uparrow$\\
+      \hline
+      一起训练（使用SID） & 0.426 & \textbf{0.168} & \textbf{0.069} & \textbf{0.780}& 0.936 & 0.979\\
+      \hline
+      一起训练（使用UD） & \textbf{0.409} & 0.170 & \textbf{0.069} & 0.775& \textbf{0.939} & \textbf{0.981}\\
+        \hline
+      只训练深度估计（使用SID） & 0.453 & 0.181 & 0.074 & 0.758& 0.927 & 0.976\\
+      \hline
+      只训练深度估计（使用UD） & 0.447 & 0.182&0.075 & 0.748& 0.923 & 0.975\\
+      \hline
+    \end{tabular}
+    \label{ablationdepth}
+
+  \end{center}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{消融实验结果-法向预测}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+       & $mean \downarrow$ & $median \downarrow$ & $rms \downarrow$&$\delta < 11.25 \uparrow$ &$\delta < 22.5 \uparrow$&$\delta < 30 \uparrow$\\
+      \hline
+      一起训练 & 19.60 & 12.49 & 434.10& 0.470&0.715& 0.794\\
+      \hline
+      只训练法向预测  & \textbf{16.82} & \textbf{10.19} & \textbf{429.19} & \textbf{0.554}&\textbf{0.780}& \textbf{0.843}\\
+      \hline
+
+    \end{tabular}
+    \label{ablationnorm}
+
+  \end{center}
+\end{table}
+
+首先，对比一起训练与单独训练的结果，可以看出，一起训练的语义分割和深度估计结果略好于单独训练，而一起训练的法向预测结果比单独训练要差。因为本文并没有使用其他的几何信息来约束语义-深度-法向的一致性，因此会导致一起训练的效果不是很理想。其次，深度估计中使用SID和UD作为区间划分方法差别不大，虽然根据DORN\cite{fu2018deep}所说，在室外场景中普遍存在距离越远深度越难估计的情况，但是对于整体上距离差别不大、深度绝对值也不超过15m的室内场景而言，这种情况很轻微，基本可以忽略不计。
+
+\subsection{预训练相关的实验}
+根据图\ref{backbone}，直接正式训练有明显的过拟合问题：正式训练的数据集只有5000多组，数目太少，很容易过拟合。而预训练的数据集则有接近20万组，不容易过拟合。图\ref{trainvalid}对比了正式训练和预训练-正式训练的训练-测试结果：正式训练有过拟合问题，而预训练后再正式训练并没有解决过拟合问题。但是并非预训练毫无意义，表\ref{pretrainseg}，\ref{pretraindepth}和\ref{pretrainnorm}对比了直接正式训练和预训后正式训练的结果，可以看出，深度估计和语义分割和法向预测的结果都有了明显提升。
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.0\linewidth]{trainvalid.pdf}
+  \caption{直接正式训练、预训练、预训练后正式训练的训练-测试损失函数示意图}
+  \label{trainvalid}
+\end{figure}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{预训练消融实验-语义分割}
+    \begin{tabular}{|c|c|} 
+    \hline
+       & 准确率$\uparrow$\\
+      \hline
+      预训练+正式训练 & \textbf{0.888} \\
+      \hline
+      只有正式训练 & 0.870\\
+      \hline
+    \end{tabular}
+      \label{pretrainseg}
+
+  \end{center}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{预训练消融实验-深度估计}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+       & $rms \downarrow$ & $rel \downarrow$ & $log10\downarrow$ &$\delta < 1.25 \uparrow$ &$\delta < 1.25^{2} \uparrow$&$\delta < 1.25^{3} \uparrow$\\
+      \hline
+      预训练+正式训练 & \textbf{0.349} & \textbf{0.125} & \textbf{0.055} & \textbf{0.813}& \textbf{0.943} & \textbf{0.981}\\
+      \hline
+      只有正式训练 & 0.472 & 0.180 & 0.073 & 0.738 & 0.893 & 0.959\\
+      \hline
+    \end{tabular}
+          \label{pretraindepth}
+
+  \end{center}
+\end{table}
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{预训练消融实验-法向预测}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+       & $mean \downarrow$ & $median \downarrow$& $rms \downarrow$ &$\delta < 11.25 \uparrow$ &$\delta < 22.5 \uparrow$&$\delta < 30 \uparrow$\\
+      \hline
+       预训练+正式训练 & \textbf{17.75} & \textbf{11.64} &\textbf{129.98}&  \textbf{0.496} & \textbf{0.767}& \textbf{0.835}\\
+      \hline
+      只有正式训练  & 18.61 & 12.99 &130.05&  0.459 & 0.734& 0.811\\
+      \hline
+
+    \end{tabular}
+          \label{pretrainnorm}
+
+  \end{center}
+\end{table}
+
+
+\section{后处理的结果}
+
+从表\ref{postprocesstable}的结果，可以看出，后处理之后的结果并不是十分理想：有部分平面预测结果差距过大，让整体的$rms$，$rel$和$log10$数据非常高，但是$\delta < 1.25$，$\delta < 1.25^2$和$\delta < 1.25^3$的结果相对尚可。图\ref{postprocess}也展示了部分平面较好的分割结果。这样两极分化的结果，除了语义分割、深度估计和法向预测的不准确之外，还有后处理算法本身的问题。
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{后处理结果}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+    \hline
+       & 分割准确率$\uparrow$& $rms \downarrow$ & $rel \downarrow$ & $log10\downarrow$ &$\delta < 1.25 \uparrow$ &$\delta < 1.25^{2} \uparrow$&$\delta < 1.25^{3} \uparrow$\\
+      \hline
+      本文的方法 &0.751 & 6817.470 & 8.290 & nan & 0.687& 0.843 & 0.901\\
+      \hline
+     Geolayout\cite{zhang2020geolayout} & 0.948 & 0.456 & 0.111 & 0.047 & 0.892 & 0.975 & 0.994\\
+      \hline
+    \end{tabular}
+    \label{postprocesstable}
+  \end{center}
+\end{table}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\linewidth]{myresult.pdf}
+  \caption{后处理之后的部分平面预测结果}
+  \label{postprocess}
+\end{figure}
+
+因此，本文设计了针对后处理算法的消融实验：使用真实的深度、法向、语义分割信息作为输入，运行后处理算法，结果见表\ref{postprocessablation}，可以看出，后处理算法本身有问题。首先，根据图\ref{good}的结果，如果深度、法向、语义分割信息预测足够准确，后处理的结果还不错。其次，根据图\ref{occluded}的结果，如果图片背景受遮挡比较严重，以至于部分墙面完全被遮挡，那么当前的后处理算法就难以正确预测出这部分墙面，带来误差。图片遮挡严重的后果，可能是整个后处理毫无意义，其导致的巨大误差会大大影响整体的指标。最终，根据图\ref{noised}的结果，如果深度、法向、语义分割预测不够准确的话，也会造成墙面预测的高度不准确。
+
+
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{使用真实数据后，后处理的结果}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+    \hline
+       & 分割准确率$\uparrow$& $rms \downarrow$ & $rel \downarrow$ & $log10\downarrow$ &$\delta < 1.25 \uparrow$ &$\delta < 1.25^{2} \uparrow$&$\delta < 1.25^{3} \uparrow$\\
+      \hline
+      后处理结果 &0.808 & 680.452 & 1.058 & nan & 0.864& 0.913 & 0.943\\
+      \hline
+    \end{tabular}
+    \label{postprocessablation}
+  \end{center}
+\end{table}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.0\linewidth]{good.pdf}
+  \caption{后处理算法处理的较好的数据}
+  \label{good}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.0\linewidth]{occluded.pdf}
+  \caption{因为遮挡导致后处理算法部分乃至完全失效的数据}
+  \label{occluded}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=1.0\linewidth]{noised.pdf}
+  \caption{因为深度、法向、分割信息不准确，后处理效果很差的数据}
+  \label{noised}
+\end{figure}
+
+\section{总结和未来改进空间}
+本文基于图像语义分割、深度估计、法向预测设计了一套三维室内场景布局估计算法，包括预训练-正式训练-后处理三个步骤，并且进行了相关的数据标注工作，但是这一套方法并不成熟。首先，在图像语义分割、深度估计、法向预测方面，本文并没有充分利用这三者在几何上的关联性，在损失函数设计上没有加上很好的互约束机制，导致这三者的预测不够准确，未来计划参考GeoNet\cite{qi2018geonet}等论文进一步改进三者联合优化的算法。其次，数据方面，目前的自动数据标注算法在语义分割和背景相关标注上表现的并不够好，需要解决三维模型噪声和去除物体后的孔洞问题。最终，本文的后处理算法也不够优秀：对于不准确的输入鲁棒性太差、对于受遮挡严重的数据表现较差、不能预测除了平面交线、交点外的其他线框、关键点（比如门框、窗框等）。希望未来能就这三点进一步改进。
